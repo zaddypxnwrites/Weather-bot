@@ -1,25 +1,20 @@
-import os
-
 import requests
 from datetime import datetime, timedelta, UTC
 from urllib.parse import quote
 
-api_key = os.getenv("OPENWEATHER_API_KEY", "")
 BASE_URL = "https://api.openweathermap.org"
+API_KEY = "b5ecf9a47a06e7ec17b33f36e451a319"
 
 
 def get_weather_report(location):
     if not location or not location.strip():
         raise ValueError("Please enter a city name.")
 
-    if not api_key:
-        raise RuntimeError("OPENWEATHER_API_KEY is not configured on this server.")
-
     encoded_location = quote(location.strip())
 
     geo_url = (
         f"{BASE_URL}/geo/1.0/direct"
-        f"?q={encoded_location}&limit=5&appid={api_key}"
+        f"?q={encoded_location}&limit=5&appid={API_KEY}"
     )
 
     try:
@@ -39,7 +34,7 @@ def get_weather_report(location):
 
     weather_url = (
         f"{BASE_URL}/data/2.5/weather"
-        f"?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+        f"?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
     )
 
     try:
@@ -49,11 +44,13 @@ def get_weather_report(location):
     except requests.exceptions.HTTPError as exc:
         raise RuntimeError("Unable to retrieve weather data.") from exc
     except requests.exceptions.RequestException as exc:
-        raise RuntimeError("Network error. Please check your internet connection.") from exc
+        raise RuntimeError(
+            "Network error. Please check your internet connection."
+        ) from exc
 
     air_url = (
         f"{BASE_URL}/data/2.5/air_pollution"
-        f"?lat={lat}&lon={lon}&appid={api_key}"
+        f"?lat={lat}&lon={lon}&appid={API_KEY}"
     )
 
     try:
@@ -69,8 +66,12 @@ def get_weather_report(location):
     timezone = data["timezone"]
     utc_now = datetime.now(UTC)
     local_time = utc_now + timedelta(seconds=timezone)
-    sunrise = datetime.fromtimestamp(data["sys"]["sunrise"], tz=UTC) + timedelta(seconds=timezone)
-    sunset = datetime.fromtimestamp(data["sys"]["sunset"], tz=UTC) + timedelta(seconds=timezone)
+    sunrise = datetime.fromtimestamp(
+        data["sys"]["sunrise"], tz=UTC
+    ) + timedelta(seconds=timezone)
+    sunset = datetime.fromtimestamp(
+        data["sys"]["sunset"], tz=UTC
+    ) + timedelta(seconds=timezone)
 
     temp = data["main"]["temp"]
     feels = data["main"]["feels_like"]
@@ -90,6 +91,7 @@ def get_weather_report(location):
         feels_emoji = "🥵"
 
     weather = data["weather"][0]["main"]
+
     weather_icons = {
         "Clear": "☀️",
         "Clouds": "☁️",
@@ -109,6 +111,7 @@ def get_weather_report(location):
     }
 
     weather_emoji = weather_icons.get(weather, "🌍")
+
     deg = data["wind"]["deg"]
     directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
     direction = directions[round(deg / 45) % 8]
