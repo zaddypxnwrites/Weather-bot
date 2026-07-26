@@ -1,0 +1,109 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Bot</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 15px;
+            width: 100%;
+            max-width: 460px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 90%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        button {
+            margin-top: 15px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #2563eb;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .error {
+            color: #fca5a5;
+            margin-top: 12px;
+        }
+
+        .result-box {
+            margin-top: 20px;
+            text-align: left;
+            background: #334155;
+            padding: 15px;
+            border-radius: 10px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌦️ Weather Bot</h1>
+
+        <form action="/weather" method="POST">
+            <input type="text" name="location" placeholder="Enter a city..." required>
+            <br>
+            <button type="submit">Get Weather</button>
+        </form>
+
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+
+        {% if result %}
+            <div class="result-box">
+                <p><strong>🏙️ City:</strong> {{ result.city }}</p>
+                <p><strong>🌍 Country:</strong> {{ result.country }}</p>
+                <p><strong>🕒 Local Time:</strong> {{ result.local_time }}</p>
+                <p><strong>🌅 Sunrise:</strong> {{ result.sunrise }}</p>
+                <p><strong>🌇 Sunset:</strong> {{ result.sunset }}</p>
+                <p><strong>🌡️ Temperature:</strong> {{ result.temperature }}</p>
+                <p><strong>🤒 Feels Like:</strong> {{ result.feels_like }}</p>
+                <p><strong>💧 Humidity:</strong> {{ result.humidity }}</p>
+                <p><strong>🧭 Pressure:</strong> {{ result.pressure }}</p>
+                <p><strong>💨 Wind:</strong> {{ result.wind_speed }}</p>
+                <p><strong>🧭 Direction:</strong> {{ result.wind_direction }}</p>
+                <p><strong>👀 Visibility:</strong> {{ result.visibility }}</p>
+                <p><strong>📍 Latitude:</strong> {{ result.latitude }}</p>
+                <p><strong>📍 Longitude:</strong> {{ result.longitude }}</p>
+                <p><strong>🌿 Air Quality:</strong> {{ result.air_quality }}</p>
+                <p><strong>🌤️ Weather:</strong> {{ result.weather }}</p>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>
