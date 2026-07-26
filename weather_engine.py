@@ -5,18 +5,15 @@ from datetime import datetime, timedelta, UTC
 from urllib.parse import quote
 
 api_key = os.getenv("OPENWEATHER_API_KEY", "")
-if not api_key:
-    raise RuntimeError(
-        "OPENWEATHER_API_KEY environment variable is required. "
-        "Set it before running the app."
-    )
-
 BASE_URL = "https://api.openweathermap.org"
 
 
 def get_weather_report(location):
     if not location or not location.strip():
         raise ValueError("Please enter a city name.")
+
+    if not api_key:
+        raise RuntimeError("OPENWEATHER_API_KEY is not configured on this server.")
 
     encoded_location = quote(location.strip())
 
