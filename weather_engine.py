@@ -13,8 +13,20 @@ def select_best_location(query, candidates):
     if not candidates:
         return None
 
-    normalized_query = " ".join(str(query).lower().split())
-    query_tokens = set(normalized_query.replace("-", " ").split())
+    def normalize_text(value):
+        return " ".join(str(value).lower().replace("-", " ").replace("_", " ").split())
+
+    normalized_query = normalize_text(query)
+    query_tokens = set(token for token in normalized_query.split() if len(token) > 1)
+
+    exact_name_matches = [
+        candidate
+        for candidate in candidates
+        if isinstance(candidate, dict)
+        and normalize_text(candidate.get("name", "")) == normalized_query
+    ]
+    if exact_name_matches:
+        return exact_name_matches[0]
 
     def score(candidate):
         if not isinstance(candidate, dict):
@@ -23,26 +35,31 @@ def select_best_location(query, candidates):
         name = str(candidate.get("name", "")).strip()
         state = str(candidate.get("state", "")).strip()
         country = str(candidate.get("country", "")).strip()
-        full_name = " ".join(part for part in [name, state, country] if part).lower()
+        full_name = normalize_text(" ".join(part for part in [name, state, country] if part))
+        name_norm = normalize_text(name)
+        state_norm = normalize_text(state)
+        country_norm = normalize_text(country)
 
         score_value = 0
         if normalized_query == full_name:
             score_value += 100
         if normalized_query in full_name:
-            score_value += 40
+            score_value += 30
+        if normalized_query.startswith(name_norm) or name_norm.startswith(normalized_query):
+            score_value += 20
 
-        candidate_tokens = set(full_name.replace("-", " ").split())
+        candidate_tokens = set(token for token in full_name.split() if len(token) > 1)
         overlap = len(query_tokens & candidate_tokens)
-        score_value += overlap * 15
+        score_value += overlap * 12
 
-        if country.lower() == "ng":
-            score_value += 5
+        if country_norm == "ng" or country_norm == "nigeria":
+            score_value += 4
 
-        if name.lower() == normalized_query:
+        if normalized_query == name_norm:
             score_value += 25
 
-        if state.lower() and normalized_query in state.lower():
-            score_value += 10
+        if state_norm and normalized_query in state_norm:
+            score_value += 8
 
         return score_value
 
