@@ -11,11 +11,11 @@ def home():
     return render_template('index.html', result=None, error=None)
 
 
-@app.route('/weather', methods=['POST'])
+@app.route('/weather', methods=['GET', 'POST'])
 def weather():
-    location = request.form.get('location', '').strip()
+    location = request.values.get('location', '').strip()
     if not location:
-        return render_template('index.html', result=None, error='Please enter a city name.'), 400
+        return render_template('index.html', result=None, error=None)
     try:
         result = get_weather_report(location)
     except Exception as exc:
