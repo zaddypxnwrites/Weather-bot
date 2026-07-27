@@ -123,6 +123,7 @@ def get_weather_report(location):
         feels_emoji = "🥵"
 
     weather = data["weather"][0]["main"]
+    is_daytime = data["sys"]["sunrise"] <= data["dt"] < data["sys"]["sunset"]
 
     weather_icons = {
         "Clear": "☀️",
@@ -180,4 +181,5 @@ def get_weather_report(location):
         "longitude": f"{lon:.4f}",
         "air_quality": air,
         "weather": f"{weather_emoji} {data['weather'][0]['description'].title()}",
+        "is_daytime": is_daytime,
     }
