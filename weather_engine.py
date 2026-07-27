@@ -1,9 +1,41 @@
+import os
+from pathlib import Path
+
 import requests
 from datetime import datetime, timedelta, UTC
 from urllib.parse import quote
 
 BASE_URL = "https://api.openweathermap.org"
-API_KEY = "b5ecf9a47a06e7ec17b33f36e451a319"
+API_KEY = os.getenv("OPENWEATHER_API_KEY")
+
+
+def _load_dotenv():
+    env_path = Path(__file__).resolve().parent / ".env"
+    if not env_path.exists():
+        return
+
+    with env_path.open("r", encoding="utf-8") as env_file:
+        for line in env_file:
+            text = line.strip()
+            if not text or text.startswith("#") or "=" not in text:
+                continue
+
+            key, value = text.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+
+if not API_KEY:
+    _load_dotenv()
+    API_KEY = os.getenv("OPENWEATHER_API_KEY")
+
+if not API_KEY:
+    raise RuntimeError(
+        "OpenWeatherMap API key is missing. "
+        "Set OPENWEATHER_API_KEY in the environment or add it to a local .env file."
+    )
 
 
 def get_weather_report(location):
