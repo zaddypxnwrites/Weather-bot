@@ -9,6 +9,49 @@ BASE_URL = "https://api.openweathermap.org"
 API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
 
+def select_best_location(query, candidates):
+    if not candidates:
+        return None
+
+    normalized_query = " ".join(str(query).lower().split())
+    query_tokens = set(normalized_query.replace("-", " ").split())
+
+    def score(candidate):
+        if not isinstance(candidate, dict):
+            return -9999
+
+        name = str(candidate.get("name", "")).strip()
+        state = str(candidate.get("state", "")).strip()
+        country = str(candidate.get("country", "")).strip()
+        full_name = " ".join(part for part in [name, state, country] if part).lower()
+
+        score_value = 0
+        if normalized_query == full_name:
+            score_value += 100
+        if normalized_query in full_name:
+            score_value += 40
+
+        candidate_tokens = set(full_name.replace("-", " ").split())
+        overlap = len(query_tokens & candidate_tokens)
+        score_value += overlap * 15
+
+        if country.lower() == "ng":
+            score_value += 5
+
+        if name.lower() == normalized_query:
+            score_value += 25
+
+        if state.lower() and normalized_query in state.lower():
+            score_value += 10
+
+        return score_value
+
+    best_candidate = max(candidates, key=score)
+    if score(best_candidate) <= 0:
+        return candidates[0]
+    return best_candidate
+
+
 def _load_dotenv():
     env_path = Path(__file__).resolve().parent / ".env"
     if not env_path.exists():
@@ -57,7 +100,10 @@ def get_weather_report(location):
         if not geo_data:
             raise ValueError("Location not found.")
 
-        best_match = geo_data[0]
+        best_match = select_best_location(location, geo_data)
+        if not best_match:
+            raise ValueError("Location not found.")
+
         lat = best_match["lat"]
         lon = best_match["lon"]
 
@@ -123,7 +169,6 @@ def get_weather_report(location):
         feels_emoji = "🥵"
 
     weather = data["weather"][0]["main"]
-    is_daytime = data["sys"]["sunrise"] <= data["dt"] < data["sys"]["sunset"]
 
     weather_icons = {
         "Clear": "☀️",
@@ -181,5 +226,4 @@ def get_weather_report(location):
         "longitude": f"{lon:.4f}",
         "air_quality": air,
         "weather": f"{weather_emoji} {data['weather'][0]['description'].title()}",
-        "is_daytime": is_daytime,
     }
