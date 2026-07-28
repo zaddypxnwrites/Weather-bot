@@ -48,4 +48,11 @@ gunicorn --bind 0.0.0.0:$PORT wsgi:app
 
 ### GitHub Actions
 
-The repo currently contains a GitHub Actions workflow at `.github/workflows/deploy.yml` that deploys to Heroku. If you are using Render instead, you can remove or disable that workflow.
+The repo contains a GitHub Actions workflow at `.github/workflows/deploy.yml` that runs tests and triggers a Render deploy.
+
+To use the workflow, add the following GitHub repository secrets:
+
+- `RENDER_API_KEY`
+- `RENDER_SERVICE_ID`
+
+Once the repo is connected to Render and the secrets are configured, pushes to `main` will run tests and request a Render deployment.
