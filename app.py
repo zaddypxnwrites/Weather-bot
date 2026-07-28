@@ -18,9 +18,32 @@ def weather():
         return render_template('index.html', result=None, error=None, version=PROJECT_VERSION)
     try:
         result = get_weather_report(location)
-    except Exception as exc:
-        return render_template('index.html', result=None, error=str(exc), version=PROJECT_VERSION)
+    except RuntimeError as exc:
+        message = str(exc)
+        if 'OpenWeatherMap API key is missing' in message:
+            message = (
+                'Server configuration error: OPENWEATHER_API_KEY is not set. '
+                'Please configure this secret in Render or local .env.'
+            )
+        return render_template('index.html', result=None, error=message, version=PROJECT_VERSION)
+    except Exception:
+        return render_template(
+            'index.html',
+            result=None,
+            error='Sorry, something went wrong. Please try again later.',
+            version=PROJECT_VERSION,
+        )
     return render_template('index.html', result=result, error=None, version=PROJECT_VERSION)
+
+
+@app.errorhandler(500)
+def handle_internal_error(error):
+    return render_template(
+        'index.html',
+        result=None,
+        error='An unexpected server error occurred. Please refresh and try again.',
+        version=PROJECT_VERSION,
+    ), 500
 
 
 @app.route('/service-worker.js')
