@@ -7,6 +7,7 @@ from urllib.parse import quote
 
 BASE_URL = "https://api.openweathermap.org"
 API_KEY = os.getenv("OPENWEATHER_API_KEY")
+PROJECT_VERSION = "1.0.0"
 
 
 def select_best_location(query, candidates):
@@ -167,6 +168,7 @@ def get_weather_report(location):
     sunset = datetime.fromtimestamp(
         data["sys"]["sunset"], tz=UTC
     ) + timedelta(seconds=timezone)
+    is_daytime = sunrise <= utc_now + timedelta(seconds=timezone) < sunset
 
     temp = data["main"]["temp"]
     feels = data["main"]["feels_like"]
@@ -230,8 +232,9 @@ def get_weather_report(location):
         "city": data["name"],
         "country": data["sys"]["country"],
         "local_time": local_time.strftime("%I:%M %p"),
-        "sunrise": sunrise.strftime("%I:%M %p"),
+            "sunrise": sunrise.strftime("%I:%M %p"),
         "sunset": sunset.strftime("%I:%M %p"),
+        "is_daytime": is_daytime,
         "temperature": f"{temp_emoji} {temp:.1f} °C",
         "feels_like": f"{feels_emoji} {feels:.1f} °C",
         "humidity": f"{data['main']['humidity']}%",
