@@ -232,7 +232,7 @@ def get_weather_report(location):
         "city": data["name"],
         "country": data["sys"]["country"],
         "local_time": local_time.strftime("%I:%M %p"),
-            "sunrise": sunrise.strftime("%I:%M %p"),
+        "sunrise": sunrise.strftime("%I:%M %p"),
         "sunset": sunset.strftime("%I:%M %p"),
         "is_daytime": is_daytime,
         "temperature": f"{temp_emoji} {temp:.1f} °C",
