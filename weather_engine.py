@@ -6,8 +6,23 @@ from datetime import datetime, timedelta, UTC
 from urllib.parse import quote
 
 BASE_URL = "https://api.openweathermap.org"
-API_KEY = os.getenv("OPENWEATHER_API_KEY")
 PROJECT_VERSION = "1.0.0"
+
+
+def get_api_key():
+    api_key = os.getenv("OPENWEATHER_API_KEY")
+    if api_key:
+        return api_key
+
+    _load_dotenv()
+    api_key = os.getenv("OPENWEATHER_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "OpenWeatherMap API key is missing. "
+            "Set OPENWEATHER_API_KEY in the environment or add it to a local .env file."
+        )
+
+    return api_key
 
 
 def select_best_location(query, candidates):
@@ -88,26 +103,16 @@ def _load_dotenv():
                 os.environ[key] = value
 
 
-if not API_KEY:
-    _load_dotenv()
-    API_KEY = os.getenv("OPENWEATHER_API_KEY")
-
-if not API_KEY:
-    raise RuntimeError(
-        "OpenWeatherMap API key is missing. "
-        "Set OPENWEATHER_API_KEY in the environment or add it to a local .env file."
-    )
-
-
 def get_weather_report(location):
     if not location or not location.strip():
         raise ValueError("Please enter a city name.")
 
     encoded_location = quote(location.strip())
 
+    api_key = get_api_key()
     geo_url = (
         f"{BASE_URL}/geo/1.0/direct"
-        f"?q={encoded_location}&limit=5&appid={API_KEY}"
+        f"?q={encoded_location}&limit=5&appid={api_key}"
     )
 
     try:
@@ -130,7 +135,7 @@ def get_weather_report(location):
 
     weather_url = (
         f"{BASE_URL}/data/2.5/weather"
-        f"?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
+        f"?lat={lat}&lon={lon}&appid={api_key}&units=metric"
     )
 
     try:
@@ -146,7 +151,7 @@ def get_weather_report(location):
 
     air_url = (
         f"{BASE_URL}/data/2.5/air_pollution"
-        f"?lat={lat}&lon={lon}&appid={API_KEY}"
+        f"?lat={lat}&lon={lon}&appid={api_key}"
     )
 
     try:
