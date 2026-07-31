@@ -191,6 +191,11 @@
       outline: none;
     }
 
+    .suggestion.active {
+      background: rgba(139, 196, 255, 0.18);
+      outline: none;
+    }
+
     .suggestion strong { display: block; font-weight: 700; }
     .suggestion span { color: var(--muted); font-size: 0.9rem; }
 
@@ -789,6 +794,35 @@
     let suggestionTimer = null;
     let suggestionAbort = null;
     let hideTimer = null;
+    let activeSuggestionIndex = -1;
+
+    function getSuggestionButtons() {
+      return Array.from(suggestionBox.querySelectorAll('.suggestion'));
+    }
+
+    function setActiveSuggestion(nextIndex) {
+      const buttons = getSuggestionButtons();
+      if (!buttons.length) {
+        activeSuggestionIndex = -1;
+        return;
+      }
+
+      if (nextIndex < 0) {
+        activeSuggestionIndex = -1;
+      } else {
+        activeSuggestionIndex = ((nextIndex % buttons.length) + buttons.length) % buttons.length;
+      }
+
+      buttons.forEach((button, index) => {
+        const isActive = index === activeSuggestionIndex;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+
+      if (activeSuggestionIndex >= 0) {
+        buttons[activeSuggestionIndex].scrollIntoView({ block: 'nearest' });
+      }
+    }
 
     function loadRecentSearches() {
       try {
@@ -840,6 +874,7 @@
     function hideSuggestions() {
       suggestionBox.classList.remove('visible');
       suggestionBox.innerHTML = '';
+      activeSuggestionIndex = -1;
     }
 
     function renderSuggestions(items) {
@@ -853,6 +888,7 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'suggestion';
+        button.setAttribute('aria-selected', 'false');
         button.innerHTML = `<strong>${item.display_name}</strong><span>Tap to load this location</span>`;
         button.addEventListener('click', () => {
           input.value = item.display_name;
@@ -863,6 +899,7 @@
       });
 
       suggestionBox.classList.add('visible');
+      setActiveSuggestion(-1);
     }
 
     async function fetchSuggestions(query) {
@@ -897,6 +934,43 @@
     input.addEventListener('focus', () => {
       if (suggestionBox.children.length) {
         suggestionBox.classList.add('visible');
+      }
+    });
+
+    input.addEventListener('keydown', (event) => {
+      const buttons = getSuggestionButtons();
+      const suggestionsVisible = suggestionBox.classList.contains('visible') && buttons.length > 0;
+
+      if (event.key === 'Escape' && suggestionBox.classList.contains('visible')) {
+        hideSuggestions();
+        return;
+      }
+
+      if (!suggestionsVisible) {
+        return;
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setActiveSuggestion(activeSuggestionIndex + 1);
+        return;
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setActiveSuggestion(activeSuggestionIndex - 1);
+        return;
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        if (activeSuggestionIndex < 0) {
+          setActiveSuggestion(0);
+        }
+        const chosen = getSuggestionButtons()[activeSuggestionIndex >= 0 ? activeSuggestionIndex : 0];
+        if (chosen) {
+          chosen.click();
+        }
       }
     });
 
