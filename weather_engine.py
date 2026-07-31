@@ -108,6 +108,11 @@ def format_wind_speed(value, units):
     return f"{value:.1f} {config['wind_speed_unit']}"
 
 
+def wind_direction_from_degrees(degrees):
+    directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+    return directions[round(float(degrees) / 45) % 8]
+
+
 def get_location_suggestions(query, limit=5):
     if not query or not query.strip():
         return []
@@ -276,12 +281,36 @@ def get_weather_report(location, units=DEFAULT_UNITS):
         forecast_data = forecast_response.json()
         for item in forecast_data.get("list", [])[:4]:
             item_time = datetime.fromtimestamp(item["dt"], tz=UTC) + timedelta(seconds=timezone)
+            wind_deg = item.get("wind", {}).get("deg")
+            wind_direction = (
+                f"{int(round(wind_deg))}° ({wind_direction_from_degrees(wind_deg)})"
+                if wind_deg is not None
+                else "N/A"
+            )
+            pop_value = item.get("pop")
+            rain_mm = item.get("rain", {}).get("3h")
+            snow_mm = item.get("snow", {}).get("3h")
+            visibility_m = item.get("visibility")
             forecast_items.append(
                 {
+                    "timestamp": item["dt"],
+                    "date": item_time.strftime("%A, %b %d"),
+                    "time": item_time.strftime("%I:%M %p"),
                     "label": item_time.strftime("%a %I %p"),
                     "icon": weather_icons.get(item["weather"][0]["main"], "🌍"),
                     "temperature": format_temperature(item["main"]["temp"], units),
+                    "feels_like": format_temperature(item["main"].get("feels_like", item["main"]["temp"]), units),
                     "description": item["weather"][0]["description"].title(),
+                    "weather_main": item["weather"][0]["main"],
+                    "humidity": f"{item['main'].get('humidity', 0)}%",
+                    "pressure": f"{item['main'].get('pressure', 0)} hPa",
+                    "wind_speed": format_wind_speed(item.get("wind", {}).get("speed", 0), units),
+                    "wind_direction": wind_direction,
+                    "cloudiness": f"{item.get('clouds', {}).get('all', 0)}%",
+                    "precipitation_probability": f"{(float(pop_value) * 100):.0f}%" if pop_value is not None else "N/A",
+                    "rain_volume": f"{float(rain_mm):.1f} mm" if rain_mm is not None else "0.0 mm",
+                    "snow_volume": f"{float(snow_mm):.1f} mm" if snow_mm is not None else "0.0 mm",
+                    "visibility": f"{(float(visibility_m) / 1000):.1f} km" if visibility_m is not None else "N/A",
                 }
             )
     except requests.exceptions.RequestException:
@@ -311,8 +340,7 @@ def get_weather_report(location, units=DEFAULT_UNITS):
     weather_emoji = weather_icons.get(weather, "🌍")
 
     deg = data["wind"]["deg"]
-    directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
-    direction = directions[round(deg / 45) % 8]
+    direction = wind_direction_from_degrees(deg)
 
     if aqi == 1:
         air = "🌿 Excellent"

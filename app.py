@@ -75,6 +75,91 @@ def suggestions():
     return jsonify(get_location_suggestions(query))
 
 
+@app.route('/forecast', methods=['GET'])
+def forecast_detail():
+    location = request.args.get('location', '').strip()
+    units = normalize_units(request.args.get('units', 'metric'))
+    timestamp_raw = request.args.get('ts', '').strip()
+    index_raw = request.args.get('index', '').strip()
+
+    if not location:
+        return render_template(
+            'forecast_detail.html',
+            forecast=None,
+            result=None,
+            error='Missing location. Please search for a city first.',
+            version=PROJECT_VERSION,
+            location='',
+            selected_units=units,
+        )
+
+    try:
+        result = get_weather_report(location, units=units)
+    except RuntimeError as exc:
+        return render_template(
+            'forecast_detail.html',
+            forecast=None,
+            result=None,
+            error=str(exc),
+            version=PROJECT_VERSION,
+            location=location,
+            selected_units=units,
+        )
+    except Exception:
+        return render_template(
+            'forecast_detail.html',
+            forecast=None,
+            result=None,
+            error='Sorry, something went wrong while loading this forecast.',
+            version=PROJECT_VERSION,
+            location=location,
+            selected_units=units,
+        )
+
+    forecast_items = result.get('forecast', [])
+    selected = None
+
+    if timestamp_raw:
+        try:
+            timestamp = int(timestamp_raw)
+        except ValueError:
+            timestamp = None
+        if timestamp is not None:
+            selected = next((item for item in forecast_items if item.get('timestamp') == timestamp), None)
+
+    if selected is None and index_raw:
+        try:
+            index = int(index_raw)
+        except ValueError:
+            index = -1
+        if 0 <= index < len(forecast_items):
+            selected = forecast_items[index]
+
+    if selected is None and forecast_items:
+        selected = forecast_items[0]
+
+    if selected is None:
+        return render_template(
+            'forecast_detail.html',
+            forecast=None,
+            result=result,
+            error='Forecast details are unavailable for this location right now.',
+            version=PROJECT_VERSION,
+            location=location,
+            selected_units=units,
+        )
+
+    return render_template(
+        'forecast_detail.html',
+        forecast=selected,
+        result=result,
+        error=None,
+        version=PROJECT_VERSION,
+        location=location,
+        selected_units=units,
+    )
+
+
 @app.errorhandler(500)
 def handle_internal_error(error):
     return render_template(

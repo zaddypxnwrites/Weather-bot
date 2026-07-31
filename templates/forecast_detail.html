@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Forecast Details | Weather Bot</title>
+  <meta name="theme-color" content="#07111f">
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: rgba(12, 24, 42, 0.92);
+      --text: #f7fbff;
+      --muted: #a8bfd9;
+      --line: rgba(166, 202, 241, 0.2);
+      --accent: #8bc4ff;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: Inter, system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(97, 163, 255, 0.25), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(125, 211, 252, 0.14), transparent 22%),
+        linear-gradient(180deg, #0d1b31 0%, #07111f 100%);
+      padding: 20px 12px 28px;
+    }
+
+    body.night {
+      background:
+        radial-gradient(circle at top left, rgba(138, 92, 255, 0.2), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(94, 234, 212, 0.08), transparent 20%),
+        linear-gradient(180deg, #081126 0%, #040811 100%);
+    }
+
+    main {
+      width: min(900px, 100%);
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+
+    .topline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      line-height: 1.02;
+      letter-spacing: -0.02em;
+      font-size: clamp(1.8rem, 3.8vw, 3rem);
+    }
+
+    h2 {
+      margin: 0;
+      font-size: clamp(2.4rem, 6vw, 4.2rem);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+    }
+
+    .summary {
+      color: var(--muted);
+      margin-top: 10px;
+      font-size: 1.02rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 12px;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+    }
+
+    .metric .value {
+      font-size: 1.04rem;
+      font-weight: 700;
+    }
+
+    .back {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 14px;
+      padding: 10px 14px;
+      background: linear-gradient(180deg, var(--accent), #73baff);
+      color: #07111f;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .error {
+      border: 1px solid rgba(241, 106, 140, 0.34);
+      border-radius: 16px;
+      background: rgba(55, 16, 34, 0.85);
+      color: #ffd1dc;
+      padding: 14px;
+    }
+
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="{{ 'night' if result and not result.is_daytime else 'day' }}">
+  <main>
+    <section class="card">
+      <div class="topline">
+        <span>Weather Bot • Forecast details</span>
+        <span>Version {{ version }}</span>
+      </div>
+
+      {% if error %}
+        <div class="error">{{ error }}</div>
+      {% endif %}
+
+      {% if forecast and result %}
+        <h1>{{ result.city }}, {{ result.country }}</h1>
+        <h2>{{ forecast.icon }} {{ forecast.temperature }}</h2>
+        <p class="summary">{{ forecast.date }} at {{ forecast.time }} • {{ forecast.description }}</p>
+
+        <div class="grid">
+          <div class="metric"><div class="label">Feels Like</div><div class="value">{{ forecast.feels_like }}</div></div>
+          <div class="metric"><div class="label">Humidity</div><div class="value">{{ forecast.humidity }}</div></div>
+          <div class="metric"><div class="label">Pressure</div><div class="value">{{ forecast.pressure }}</div></div>
+          <div class="metric"><div class="label">Cloudiness</div><div class="value">{{ forecast.cloudiness }}</div></div>
+          <div class="metric"><div class="label">Wind Speed</div><div class="value">{{ forecast.wind_speed }}</div></div>
+          <div class="metric"><div class="label">Wind Direction</div><div class="value">{{ forecast.wind_direction }}</div></div>
+          <div class="metric"><div class="label">Precipitation Chance</div><div class="value">{{ forecast.precipitation_probability }}</div></div>
+          <div class="metric"><div class="label">Rain (3h)</div><div class="value">{{ forecast.rain_volume }}</div></div>
+          <div class="metric"><div class="label">Snow (3h)</div><div class="value">{{ forecast.snow_volume }}</div></div>
+          <div class="metric"><div class="label">Visibility</div><div class="value">{{ forecast.visibility }}</div></div>
+        </div>
+      {% endif %}
+    </section>
+
+    <a class="back" href="/weather?location={{ (location or (result.query if result else ''))|urlencode }}&units={{ selected_units }}">Back to full weather dashboard</a>
+  </main>
+</body>
+</html>
