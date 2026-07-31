@@ -1,4 +1,4 @@
-const CACHE_NAME = 'weather-bot-v2';
+const CACHE_NAME = 'cozy-trading-bot-v3';
 const URLS_TO_CACHE = [
   '/',
   '/static/manifest.webmanifest',

@@ -1,4 +1,4 @@
-name: Deploy Weather Bot
+name: Deploy Cozy Trading Bot
 
 on:
   push:

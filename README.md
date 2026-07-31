@@ -1,6 +1,6 @@
-# Weather Bot
+# Cozy Trading Bot
 
-A simple Flask weather dashboard using the OpenWeather API.
+A Flask dashboard project currently using weather data APIs, rebranded as Cozy Trading Bot.
 
 ## Setup
 

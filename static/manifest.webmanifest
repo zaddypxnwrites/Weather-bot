@@ -1,6 +1,6 @@
 {
-  "name": "Weather Bot",
-  "short_name": "Weather Bot",
+  "name": "Cozy Trading Bot",
+  "short_name": "Cozy Trading Bot",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

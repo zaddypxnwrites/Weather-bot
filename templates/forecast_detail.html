@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Forecast Details | Weather Bot</title>
+  <title>Forecast Details | Cozy Trading Bot</title>
   <meta name="theme-color" content="#07111f">
   <style>
     :root {
@@ -518,7 +518,7 @@
 <body class="{{ 'day' if forecast and forecast.is_daytime else 'night' }}">
   <main>
     <section class="topbar">
-      <span class="badge">Weather Bot Forecast View</span>
+      <span class="badge">Cozy Trading Bot Forecast View</span>
       <div class="nav-links">
         <a class="nav-link alt" href="/">New Search</a>
         <a class="nav-link" href="/weather?location={{ (location or (result.query if result else ''))|urlencode }}&units={{ selected_units }}">Back to Dashboard</a>

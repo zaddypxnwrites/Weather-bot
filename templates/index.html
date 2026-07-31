@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Weather Bot</title>
+  <title>Cozy Trading Bot</title>
   <link rel="manifest" href="/static/manifest.webmanifest">
   <meta name="theme-color" content="#07111f">
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
@@ -847,7 +847,7 @@
   <main class="shell">
     <header class="top">
       <div class="branding">
-        <p class="eyebrow">Weather Bot</p>
+        <p class="eyebrow">Cozy Trading Bot</p>
         <h1>Weather that reads like a dashboard.</h1>
         <p class="tagline">Search any city, switch units instantly, and skim the forecast without digging through a wall of numbers.</p>
         <p class="statusline">Version {{ version }}</p>
@@ -1000,7 +1000,7 @@
     {% endif %}
 
     <footer class="footer">
-      <span>Weather Bot helps you check conditions in seconds.</span>
+      <span>Cozy Trading Bot helps you check conditions in seconds.</span>
       <span class="badge">V{{ version }}</span>
     </footer>
   </main>
@@ -1018,7 +1018,7 @@
     const unitButtons = Array.from(document.querySelectorAll('.unit-toggle button'));
     const exampleButtons = Array.from(document.querySelectorAll('[data-example]'));
     const skyVisual = document.querySelector('.sky-visual[data-weather]');
-    const recentKey = 'weather-bot-recent-searches';
+    const recentKey = 'cozy-trading-bot-recent-searches';
     let suggestionTimer = null;
     let suggestionAbort = null;
     let hideTimer = null;
