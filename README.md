@@ -5,10 +5,11 @@ A simple Flask weather dashboard using the OpenWeather API.
 ## Setup
 
 1. Copy `.env.example` to `.env`.
-2. Add your OpenWeather API key to `.env`:
+2. Add your OpenWeather API key and Grok API key to `.env`:
 
 ```text
 OPENWEATHER_API_KEY=your_openweather_api_key_here
+GROK_API_KEY=your_grok_api_key_here
 ```
 
 3. Install dependencies:
