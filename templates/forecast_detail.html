@@ -177,6 +177,15 @@
       font-size: 0.94rem;
     }
 
+    .wear-emoji {
+      display: inline-block;
+      animation: wear-fade 1.8s ease-in-out infinite;
+    }
+
+    .wear-emoji.water {
+      animation-delay: 0.45s;
+    }
+
     .sky-wrap {
       display: grid;
       place-items: center;
@@ -485,6 +494,11 @@
       50% { opacity: 0.74; transform: scale(1.08); }
     }
 
+    @keyframes wear-fade {
+      0%, 100% { opacity: 0.35; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(-1px); }
+    }
+
     @media (max-width: 980px) {
       .hero { grid-template-columns: 1fr; }
       .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -526,7 +540,7 @@
             <span class="pill">Feels like {{ forecast.feels_like }}</span>
             <span class="pill">Wind {{ forecast.wind_speed }}</span>
             <span class="pill">Rain chance {{ forecast.precipitation_probability }}</span>
-            <span class="pill">Wear: {{ forecast.wear_advice }}</span>
+            <span class="pill"><span class="wear-emoji">👕</span><span class="wear-emoji water">💧</span>Wear: {{ forecast.wear_advice }}</span>
           </div>
         </div>
 
@@ -561,7 +575,7 @@
               <strong>{{ item.label }}</strong>
               <span class="small">{{ item.icon }} {{ item.description }}</span>
               <span class="temp">{{ item.temperature }}</span>
-              <span class="small">Wear: {{ item.wear_advice }}</span>
+              <span class="small"><span class="wear-emoji">👕</span><span class="wear-emoji water">💧</span> Wear: {{ item.wear_advice }}</span>
             </a>
           {% endfor %}
         </div>

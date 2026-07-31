@@ -403,6 +403,15 @@
       font-weight: 700;
     }
 
+    .wear-emoji {
+      display: inline-block;
+      animation: wear-fade 1.8s ease-in-out infinite;
+    }
+
+    .wear-emoji.water {
+      animation-delay: 0.45s;
+    }
+
     .hero-meta {
       display: grid;
       gap: 10px;
@@ -806,6 +815,11 @@
       50% { opacity: 0.74; transform: scale(1.08); }
     }
 
+    @keyframes wear-fade {
+      0%, 100% { opacity: 0.35; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(-1px); }
+    }
+
     @media (max-width: 960px) {
       .top { grid-template-columns: 1fr; }
       .hero { grid-template-columns: 1fr; }
@@ -885,7 +899,7 @@
               <span class="weather-pill">{{ result.weather_icon }} {{ result.weather_description }}</span>
               <span class="weather-pill">Feels like {{ result.feels_like }}</span>
               <span class="weather-pill">Air quality: {{ result.air_quality }}</span>
-              <span class="weather-pill">What to wear: {{ result.wear_advice }}</span>
+              <span class="weather-pill"><span class="wear-emoji">👕</span><span class="wear-emoji water">💧</span>What to wear: {{ result.wear_advice }}</span>
             </div>
             <div class="hero-meta">
               <p>Sunrise {{ result.sunrise }} • Sunset {{ result.sunset }}</p>
@@ -933,7 +947,7 @@
                     <strong>{{ item.label }}</strong>
                     <div class="time">{{ item.icon }} {{ item.description }}</div>
                     <div class="mini-temp">{{ item.temperature }}</div>
-                    <div class="time">Wear: {{ item.wear_advice }}</div>
+                    <div class="time"><span class="wear-emoji">👕</span><span class="wear-emoji water">💧</span> Wear: {{ item.wear_advice }}</div>
                   </div>
                 </a>
               {% endfor %}
