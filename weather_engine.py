@@ -281,6 +281,11 @@ def get_weather_report(location, units=DEFAULT_UNITS):
         forecast_data = forecast_response.json()
         for item in forecast_data.get("list", [])[:4]:
             item_time = datetime.fromtimestamp(item["dt"], tz=UTC) + timedelta(seconds=timezone)
+            pod = item.get("sys", {}).get("pod")
+            if pod in {"d", "n"}:
+                forecast_is_daytime = pod == "d"
+            else:
+                forecast_is_daytime = 6 <= item_time.hour < 18
             wind_deg = item.get("wind", {}).get("deg")
             wind_direction = (
                 f"{int(round(wind_deg))}° ({wind_direction_from_degrees(wind_deg)})"
@@ -298,6 +303,7 @@ def get_weather_report(location, units=DEFAULT_UNITS):
                     "time": item_time.strftime("%I:%M %p"),
                     "label": item_time.strftime("%a %I %p"),
                     "icon": weather_icons.get(item["weather"][0]["main"], "🌍"),
+                    "is_daytime": forecast_is_daytime,
                     "temperature": format_temperature(item["main"]["temp"], units),
                     "feels_like": format_temperature(item["main"].get("feels_like", item["main"]["temp"]), units),
                     "description": item["weather"][0]["description"].title(),
