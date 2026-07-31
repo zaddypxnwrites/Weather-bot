@@ -108,6 +108,51 @@ def format_wind_speed(value, units):
     return f"{value:.1f} {config['wind_speed_unit']}"
 
 
+def country_code_to_flag(country_code):
+    code = str(country_code or "").strip().upper()
+    if len(code) != 2 or not code.isalpha():
+        return "🌍"
+    return "".join(chr(127397 + ord(char)) for char in code)
+
+
+def build_wear_advice(temp_value, weather_main, weather_description, wind_speed, units):
+    temp_c = float(temp_value)
+    if normalize_units(units) == "imperial":
+        temp_c = (temp_c - 32) * 5 / 9
+
+    lower_desc = str(weather_description or "").lower()
+    lower_main = str(weather_main or "").lower()
+    tips = []
+
+    if temp_c < 0:
+        tips.append("Heavy coat, thermal layers, gloves, and warm boots.")
+    elif temp_c < 10:
+        tips.append("Jacket or hoodie with full-length trousers.")
+    elif temp_c < 18:
+        tips.append("Light sweater or long-sleeve with comfortable layers.")
+    elif temp_c < 27:
+        tips.append("T-shirt or light top with breathable layers.")
+    else:
+        tips.append("Very light, breathable outfit and stay hydrated.")
+
+    if any(token in lower_desc for token in ["rain", "drizzle", "thunder", "shower"]):
+        tips.append("Carry an umbrella or rain jacket.")
+    if "snow" in lower_desc or "ice" in lower_desc:
+        tips.append("Use waterproof boots and insulated outerwear.")
+    if "mist" in lower_desc or "fog" in lower_desc or "haze" in lower_desc:
+        tips.append("Wear visible layers for low-visibility conditions.")
+
+    wind_value = float(wind_speed or 0)
+    windy_threshold = 7 if normalize_units(units) == "metric" else 16
+    if wind_value >= windy_threshold:
+        tips.append("Add a windproof outer layer.")
+
+    if not tips:
+        tips.append("Comfortable casual wear should be fine.")
+
+    return " ".join(tips[:3])
+
+
 def wind_direction_from_degrees(degrees):
     directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
     return directions[round(float(degrees) / 45) % 8]
@@ -296,6 +341,13 @@ def get_weather_report(location, units=DEFAULT_UNITS):
             rain_mm = item.get("rain", {}).get("3h")
             snow_mm = item.get("snow", {}).get("3h")
             visibility_m = item.get("visibility")
+            forecast_wear_advice = build_wear_advice(
+                item["main"]["temp"],
+                item["weather"][0].get("main", ""),
+                item["weather"][0].get("description", ""),
+                item.get("wind", {}).get("speed", 0),
+                units,
+            )
             forecast_items.append(
                 {
                     "timestamp": item["dt"],
@@ -317,6 +369,7 @@ def get_weather_report(location, units=DEFAULT_UNITS):
                     "rain_volume": f"{float(rain_mm):.1f} mm" if rain_mm is not None else "0.0 mm",
                     "snow_volume": f"{float(snow_mm):.1f} mm" if snow_mm is not None else "0.0 mm",
                     "visibility": f"{(float(visibility_m) / 1000):.1f} km" if visibility_m is not None else "N/A",
+                    "wear_advice": forecast_wear_advice,
                 }
             )
     except requests.exceptions.RequestException:
@@ -363,10 +416,20 @@ def get_weather_report(location, units=DEFAULT_UNITS):
 
     visibility_km = data["visibility"] / 1000
     unit_config = UNIT_CONFIG[units]
+    country_code = data["sys"].get("country", "")
+    country_flag = country_code_to_flag(country_code)
+    wear_advice = build_wear_advice(
+        temp,
+        weather,
+        data["weather"][0]["description"],
+        data["wind"].get("speed", 0),
+        units,
+    )
 
     return {
         "city": data["name"],
-        "country": data["sys"]["country"],
+        "country": country_code,
+        "country_flag": country_flag,
         "local_time": local_time.strftime("%I:%M %p"),
         "sunrise": sunrise.strftime("%I:%M %p"),
         "sunset": sunset.strftime("%I:%M %p"),
@@ -387,6 +450,7 @@ def get_weather_report(location, units=DEFAULT_UNITS):
         "weather_icon": weather_emoji,
         "weather_main": weather,
         "weather_description": data["weather"][0]["description"].title(),
+        "wear_advice": wear_advice,
         "wind_unit": unit_config["wind_speed_unit"],
         "temperature_unit": unit_config["temperature_symbol"],
         "units": units,

@@ -7,8 +7,10 @@ import requests
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from weather_engine import (
+    country_code_to_flag,
     format_temperature,
     format_wind_speed,
+    build_wear_advice,
     get_location_suggestions,
     get_weather_report,
     normalize_units,
@@ -36,6 +38,16 @@ def test_format_helpers_follow_selected_units():
     assert format_temperature(71.8, "imperial") == "71.8 °F"
     assert format_wind_speed(5.2, "metric") == "5.2 m/s"
     assert format_wind_speed(11.1, "imperial") == "11.1 mph"
+
+
+def test_country_code_to_flag_supports_iso_codes():
+    assert country_code_to_flag("US") == "🇺🇸"
+    assert country_code_to_flag("ng") == "🇳🇬"
+
+
+def test_build_wear_advice_mentions_rain_gear():
+    advice = build_wear_advice(15, "Rain", "light rain", 3, "metric")
+    assert "umbrella" in advice.lower() or "rain jacket" in advice.lower()
 
 
 def test_get_location_suggestions_formats_candidates(monkeypatch):
@@ -137,11 +149,17 @@ def test_get_weather_report_supports_imperial_units(monkeypatch):
                             "dt": 2000,
                             "main": {"temp": 72.5},
                             "weather": [{"main": "Clouds", "description": "few clouds"}],
+                            "wind": {"speed": 9.8, "deg": 120},
+                            "clouds": {"all": 33},
+                            "sys": {"pod": "d"},
                         },
                         {
                             "dt": 3000,
                             "main": {"temp": 70.2},
                             "weather": [{"main": "Rain", "description": "light rain"}],
+                            "wind": {"speed": 12.1, "deg": 90},
+                            "clouds": {"all": 72},
+                            "sys": {"pod": "n"},
                         },
                     ]
                 }
@@ -155,5 +173,8 @@ def test_get_weather_report_supports_imperial_units(monkeypatch):
     assert report["units"] == "imperial"
     assert report["temperature"].endswith("°F")
     assert report["wind_speed"].endswith("mph")
+    assert report["country_flag"] == "🇺🇸"
+    assert report["wear_advice"]
     assert report["forecast"]
     assert report["forecast"][0]["temperature"].endswith("°F")
+    assert report["forecast"][0]["wear_advice"]

@@ -518,7 +518,7 @@
     {% if forecast and result %}
       <section class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">{{ result.city }}, {{ result.country }} | {{ forecast.date }} | {{ forecast.time }}</p>
+          <p class="eyebrow">{{ result.city }}, {{ result.country_flag }} {{ result.country }} | {{ forecast.date }} | {{ forecast.time }}</p>
           <h1>{{ forecast.icon }} {{ forecast.description }}</h1>
           <p class="big-temp">{{ forecast.temperature }}</p>
           <p class="summary">This is the nearest projected slot from OpenWeather forecast data in {{ result.units_label }}.</p>
@@ -526,6 +526,7 @@
             <span class="pill">Feels like {{ forecast.feels_like }}</span>
             <span class="pill">Wind {{ forecast.wind_speed }}</span>
             <span class="pill">Rain chance {{ forecast.precipitation_probability }}</span>
+            <span class="pill">Wear: {{ forecast.wear_advice }}</span>
           </div>
         </div>
 
@@ -560,6 +561,7 @@
               <strong>{{ item.label }}</strong>
               <span class="small">{{ item.icon }} {{ item.description }}</span>
               <span class="temp">{{ item.temperature }}</span>
+              <span class="small">Wear: {{ item.wear_advice }}</span>
             </a>
           {% endfor %}
         </div>

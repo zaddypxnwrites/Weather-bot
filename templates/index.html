@@ -879,12 +879,13 @@
       <section class="dashboard" aria-label="Weather results">
         <div class="hero">
           <div class="hero-copy">
-            <p class="location-line">{{ result.country }} · {{ result.local_time }} · {{ result.units_label }}</p>
+            <p class="location-line">{{ result.country_flag }} {{ result.country }} · {{ result.local_time }} · {{ result.units_label }}</p>
             <h2>{{ result.city }}</h2>
             <div class="weather-summary">
               <span class="weather-pill">{{ result.weather_icon }} {{ result.weather_description }}</span>
               <span class="weather-pill">Feels like {{ result.feels_like }}</span>
               <span class="weather-pill">Air quality: {{ result.air_quality }}</span>
+              <span class="weather-pill">What to wear: {{ result.wear_advice }}</span>
             </div>
             <div class="hero-meta">
               <p>Sunrise {{ result.sunrise }} • Sunset {{ result.sunset }}</p>
@@ -932,6 +933,7 @@
                     <strong>{{ item.label }}</strong>
                     <div class="time">{{ item.icon }} {{ item.description }}</div>
                     <div class="mini-temp">{{ item.temperature }}</div>
+                    <div class="time">Wear: {{ item.wear_advice }}</div>
                   </div>
                 </a>
               {% endfor %}
