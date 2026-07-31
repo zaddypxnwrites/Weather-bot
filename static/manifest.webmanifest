@@ -1,1 +1,17 @@
-z��y��y�nb��y��y�e"��y��y�"V��y��y�av��y��y�er��y��y�Bn��y��y�".��y��y�sj��y��y�rv��y��y�nb��y��y�e"��y��y�"V��y��y�av��y��y�er��y��y�Bn��y��y�".��y��y�sv��y��y�rv��y��y�ur��y��y�":��y��y�/"��y��y�"f��y��y�sr��y��y�az��y��y�:"��y��y�tb��y��y�db��y��y�on��y��y�".��y��y�bb��y��y�kf��y��y�ov��y��y�d^��y��y�on��y��y�r"��y��y�""��y��y�72��y��y�1f��y��y�,"��y��y�hf��y��y�e^��y��y�on��y��y�r"��y��y�""��y��y�72��y��y�1f��y��y�,"��y��y�cn��y��y�s"��y��y�[z��y��y�sr��y��y�":��y��y�/r��y��y�av��y��y�c.��y��y�cn��y��y�.r��y��y�g"��y��y�"r��y��y�zf��y��y�":��y��y�an��y��y�".��y��y�tz��y��y�e"��y��y�"j��y��y�af��y��y�/r��y��y�g*��y��y�mn��y��y�}^��y��y�
+{
+  "name": "Weather Bot",
+  "short_name": "Weather Bot",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#07111f",
+  "background_color": "#07111f",
+  "description": "A simple weather dashboard that shows current conditions and air quality.",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}z��y��y�nb��y��y�e"��y��y�"V��y��y�av��y��y�er��y��y�Bn��y��y�".��y��y�sj��y��y�rv��y��y�nb��y��y�e"��y��y�"V��y��y�av��y��y�er��y��y�Bn��y��y�".��y��y�sv��y��y�rv��y��y�ur��y��y�":��y��y�/"��y��y�"f��y��y�sr��y��y�az��y��y�:"��y��y�tb��y��y�db��y��y�on��y��y�".��y��y�bb��y��y�kf��y��y�ov��y��y�d^��y��y�on��y��y�r"��y��y�""��y��y�72��y��y�1f��y��y�,"��y��y�hf��y��y�e^��y��y�on��y��y�r"��y��y�""��y��y�72��y��y�1f��y��y�,"��y��y�cn��y��y�s"��y��y�[z��y��y�sr��y��y�":��y��y�/r��y��y�av��y��y�c.��y��y�cn��y��y�.r��y��y�g"��y��y�"r��y��y�zf��y��y�":��y��y�an��y��y�".��y��y�tz��y��y�e"��y��y�"j��y��y�af��y��y�/r��y��y�g*��y��y�mn��y��y�}^��y��y�

@@ -7,6 +7,12 @@ from urllib.parse import quote
 
 BASE_URL = "https://api.openweathermap.org"
 PROJECT_VERSION = "1.0.0"
+DEFAULT_UNITS = "metric"
+
+UNIT_CONFIG = {
+    "metric": {"temperature_symbol": "°C", "wind_speed_unit": "m/s", "label": "Celsius"},
+    "imperial": {"temperature_symbol": "°F", "wind_speed_unit": "mph", "label": "Fahrenheit"},
+}
 
 
 def get_api_key():
@@ -85,6 +91,65 @@ def select_best_location(query, candidates):
     return best_candidate
 
 
+def normalize_units(units):
+    normalized = str(units or DEFAULT_UNITS).strip().lower()
+    if normalized not in UNIT_CONFIG:
+        return DEFAULT_UNITS
+    return normalized
+
+
+def format_temperature(value, units):
+    config = UNIT_CONFIG[normalize_units(units)]
+    return f"{value:.1f} {config['temperature_symbol']}"
+
+
+def format_wind_speed(value, units):
+    config = UNIT_CONFIG[normalize_units(units)]
+    return f"{value:.1f} {config['wind_speed_unit']}"
+
+
+def get_location_suggestions(query, limit=5):
+    if not query or not query.strip():
+        return []
+
+    api_key = get_api_key()
+    encoded_location = quote(query.strip())
+    geo_url = (
+        f"{BASE_URL}/geo/1.0/direct"
+        f"?q={encoded_location}&limit={max(1, min(int(limit), 8))}&appid={api_key}"
+    )
+
+    try:
+        response = requests.get(geo_url, timeout=10)
+        response.raise_for_status()
+        candidates = response.json()
+    except requests.exceptions.RequestException:
+        return []
+
+    suggestions = []
+    for candidate in candidates[: max(1, min(int(limit), 8))]:
+        if not isinstance(candidate, dict):
+            continue
+
+        parts = [candidate.get("name", "")]
+        if candidate.get("state"):
+            parts.append(candidate["state"])
+        if candidate.get("country"):
+            parts.append(candidate["country"])
+
+        display_name = ", ".join(part for part in parts if part)
+        suggestions.append(
+            {
+                "name": candidate.get("name", ""),
+                "state": candidate.get("state", ""),
+                "country": candidate.get("country", ""),
+                "display_name": display_name,
+            }
+        )
+
+    return suggestions
+
+
 def _load_dotenv():
     env_path = Path(__file__).resolve().parent / ".env"
     if not env_path.exists():
@@ -103,10 +168,11 @@ def _load_dotenv():
                 os.environ[key] = value
 
 
-def get_weather_report(location):
+def get_weather_report(location, units=DEFAULT_UNITS):
     if not location or not location.strip():
         raise ValueError("Please enter a city name.")
 
+    units = normalize_units(units)
     encoded_location = quote(location.strip())
 
     api_key = get_api_key()
@@ -114,6 +180,24 @@ def get_weather_report(location):
         f"{BASE_URL}/geo/1.0/direct"
         f"?q={encoded_location}&limit=5&appid={api_key}"
     )
+
+    weather_icons = {
+        "Clear": "☀️",
+        "Clouds": "☁️",
+        "Rain": "🌧️",
+        "Drizzle": "🌦️",
+        "Thunderstorm": "⛈️",
+        "Snow": "❄️",
+        "Mist": "🌫️",
+        "Fog": "🌫️",
+        "Smoke": "💨",
+        "Haze": "🌁",
+        "Dust": "🌪️",
+        "Sand": "🏜️",
+        "Ash": "🌋",
+        "Squall": "💨",
+        "Tornado": "🌪️",
+    }
 
     try:
         geo_response = requests.get(geo_url, timeout=10)
@@ -135,7 +219,7 @@ def get_weather_report(location):
 
     weather_url = (
         f"{BASE_URL}/data/2.5/weather"
-        f"?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+        f"?lat={lat}&lon={lon}&appid={api_key}&units={units}"
     )
 
     try:
@@ -148,6 +232,17 @@ def get_weather_report(location):
         raise RuntimeError(
             "Network error. Please check your internet connection."
         ) from exc
+
+    timezone = data["timezone"]
+    utc_now = datetime.now(UTC)
+    local_time = utc_now + timedelta(seconds=timezone)
+    sunrise = datetime.fromtimestamp(
+        data["sys"]["sunrise"], tz=UTC
+    ) + timedelta(seconds=timezone)
+    sunset = datetime.fromtimestamp(
+        data["sys"]["sunset"], tz=UTC
+    ) + timedelta(seconds=timezone)
+    is_daytime = sunrise <= utc_now + timedelta(seconds=timezone) < sunset
 
     air_url = (
         f"{BASE_URL}/data/2.5/air_pollution"
@@ -164,16 +259,30 @@ def get_weather_report(location):
     except (KeyError, IndexError, ValueError):
         aqi = None
 
-    timezone = data["timezone"]
-    utc_now = datetime.now(UTC)
-    local_time = utc_now + timedelta(seconds=timezone)
-    sunrise = datetime.fromtimestamp(
-        data["sys"]["sunrise"], tz=UTC
-    ) + timedelta(seconds=timezone)
-    sunset = datetime.fromtimestamp(
-        data["sys"]["sunset"], tz=UTC
-    ) + timedelta(seconds=timezone)
-    is_daytime = sunrise <= utc_now + timedelta(seconds=timezone) < sunset
+    forecast_url = (
+        f"{BASE_URL}/data/2.5/forecast"
+        f"?lat={lat}&lon={lon}&appid={api_key}&units={units}"
+    )
+
+    forecast_items = []
+    try:
+        forecast_response = requests.get(forecast_url, timeout=10)
+        forecast_response.raise_for_status()
+        forecast_data = forecast_response.json()
+        for item in forecast_data.get("list", [])[:4]:
+            item_time = datetime.fromtimestamp(item["dt"], tz=UTC) + timedelta(seconds=timezone)
+            forecast_items.append(
+                {
+                    "label": item_time.strftime("%a %I %p"),
+                    "icon": weather_icons.get(item["weather"][0]["main"], "🌍"),
+                    "temperature": format_temperature(item["main"]["temp"], units),
+                    "description": item["weather"][0]["description"].title(),
+                }
+            )
+    except requests.exceptions.RequestException:
+        forecast_items = []
+    except (KeyError, IndexError, TypeError, ValueError):
+        forecast_items = []
 
     temp = data["main"]["temp"]
     feels = data["main"]["feels_like"]
@@ -193,24 +302,6 @@ def get_weather_report(location):
         feels_emoji = "🥵"
 
     weather = data["weather"][0]["main"]
-
-    weather_icons = {
-        "Clear": "☀️",
-        "Clouds": "☁️",
-        "Rain": "🌧️",
-        "Drizzle": "🌦️",
-        "Thunderstorm": "⛈️",
-        "Snow": "❄️",
-        "Mist": "🌫️",
-        "Fog": "🌫️",
-        "Smoke": "💨",
-        "Haze": "🌁",
-        "Dust": "🌪️",
-        "Sand": "🏜️",
-        "Ash": "🌋",
-        "Squall": "💨",
-        "Tornado": "🌪️",
-    }
 
     weather_emoji = weather_icons.get(weather, "🌍")
 
@@ -232,6 +323,7 @@ def get_weather_report(location):
         air = "❓ Unavailable"
 
     visibility_km = data["visibility"] / 1000
+    unit_config = UNIT_CONFIG[units]
 
     return {
         "city": data["name"],
@@ -240,15 +332,26 @@ def get_weather_report(location):
         "sunrise": sunrise.strftime("%I:%M %p"),
         "sunset": sunset.strftime("%I:%M %p"),
         "is_daytime": is_daytime,
-        "temperature": f"{temp_emoji} {temp:.1f} °C",
-        "feels_like": f"{feels_emoji} {feels:.1f} °C",
+        "temperature": format_temperature(temp, units),
+        "temperature_emoji": temp_emoji,
+        "feels_like": format_temperature(feels, units),
+        "feels_like_emoji": feels_emoji,
         "humidity": f"{data['main']['humidity']}%",
         "pressure": f"{data['main']['pressure']} hPa",
-        "wind_speed": f"{data['wind']['speed']} m/s",
+        "wind_speed": format_wind_speed(data['wind']['speed'], units),
         "wind_direction": f"{deg}° ({direction})",
         "visibility": f"{visibility_km:.1f} km",
         "latitude": f"{lat:.4f}",
         "longitude": f"{lon:.4f}",
         "air_quality": air,
         "weather": f"{weather_emoji} {data['weather'][0]['description'].title()}",
+        "weather_icon": weather_emoji,
+        "weather_main": weather,
+        "weather_description": data["weather"][0]["description"].title(),
+        "wind_unit": unit_config["wind_speed_unit"],
+        "temperature_unit": unit_config["temperature_symbol"],
+        "units": units,
+        "units_label": unit_config["label"],
+        "forecast": forecast_items,
+        "query": location.strip(),
     }

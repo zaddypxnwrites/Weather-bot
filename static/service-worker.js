@@ -1,1 +1,53 @@
-r��y��y�lf��y��y�af��y��y�Ev��y��y�nv��y��y�ir��y��y�en��y��y�r*��y��y�in��y��y�tb��y��y�l"��y��y�e>��y��y�sf��y��y�f.��y��y�kj��y��y�Wb��y��y�tj��y��y�g*��y��y�):��y��y�en��y��y�.b��y��y�dF��y��y�en��y��y�Lj��y��y�tf��y��y�er��y��y�"b��y��y�tj��y��y�av��y��y�".��y��y�=>��y��y�.v��y��y�iv��y��y�nv��y��y�l*��y��y�en��y��y�.b��y��y�if��y��y�tr��y��y�cn��y��y�in��y��y�)*��y��y�;
+const CACHE_NAME = 'weather-bot-v2';
+const URLS_TO_CACHE = [
+  '/',
+  '/static/manifest.webmanifest',
+  '/static/icon.svg',
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(URLS_TO_CACHE)),
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)),
+      ),
+    ),
+  );
+  self.clients.claim();
+});
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.pathname.startsWith('/api/')) {
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+
+      return fetch(event.request).then((networkResponse) => {
+        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+          return networkResponse;
+        }
+
+        const responseClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+        return networkResponse;
+      });
+    }),
+  );
+});

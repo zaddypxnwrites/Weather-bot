@@ -10,277 +10,422 @@
   <style>
     :root {
       --bg: #07111f;
-      --surface: #10243b;
-      --card: #183553;
+      --bg-alt: #0d1c32;
+      --panel: rgba(10, 22, 40, 0.9);
+      --panel-strong: rgba(20, 40, 66, 0.95);
+      --card: rgba(24, 53, 83, 0.96);
       --text: #f7fbff;
-      --muted: #abc1d8;
+      --muted: #a8bfd9;
       --accent: #8bc4ff;
       --accent-strong: #5bb2ff;
-      --line: #365779;
-      --success: #76d6a2;
-      --warning: #f4b23b;
-      --danger: #f16a8c;
+      --line: rgba(166, 202, 241, 0.18);
+      --shadow: 0 28px 80px rgba(0, 0, 0, 0.35);
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
 
     body {
       margin: 0;
       min-height: 100vh;
-      padding: 32px 18px;
       color: var(--text);
       font-family: Inter, system-ui, sans-serif;
-      background: radial-gradient(circle at top, rgba(97, 163, 255, 0.24), transparent 28%), linear-gradient(180deg, #0f1a32 0%, #07111f 100%);
+      background:
+        radial-gradient(circle at top left, rgba(97, 163, 255, 0.25), transparent 26%),
+        radial-gradient(circle at bottom right, rgba(125, 211, 252, 0.14), transparent 20%),
+        linear-gradient(180deg, #0d1b31 0%, #07111f 100%);
     }
 
     body.night {
-      background: radial-gradient(circle at top, rgba(114, 112, 255, 0.16), transparent 24%), linear-gradient(180deg, #0a1428 0%, #040811 100%);
+      background:
+        radial-gradient(circle at top left, rgba(138, 92, 255, 0.22), transparent 26%),
+        radial-gradient(circle at bottom right, rgba(94, 234, 212, 0.09), transparent 18%),
+        linear-gradient(180deg, #081126 0%, #040811 100%);
     }
 
     main {
-      max-width: 1080px;
+      width: min(1200px, calc(100vw - 24px));
       margin: 0 auto;
+      padding: 20px 0 28px;
     }
 
     .top {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      align-items: center;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: 1fr minmax(320px, 540px);
+      gap: 18px;
+      align-items: end;
+      margin-bottom: 18px;
     }
 
-    .branding {
-      min-width: 260px;
+    .branding { padding: 18px 0 6px; }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 12px;
+      color: #cfe4ff;
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px rgba(139, 196, 255, 0.12);
     }
 
     h1 {
       margin: 0;
-      font-size: clamp(2rem, 4vw, 2.7rem);
+      font-size: clamp(2.1rem, 4vw, 3.6rem);
+      letter-spacing: -0.03em;
+      line-height: 0.98;
     }
 
-    .tag {
+    .tagline {
+      margin: 10px 0 0;
       color: var(--muted);
-      margin: 8px 0 0;
-      display: block;
+      max-width: 62ch;
+      line-height: 1.55;
     }
 
-    form {
-      display: flex;
-      gap: 10px;
-      flex: 1;
-      max-width: 500px;
-      min-width: 220px;
-    }
-
-    input,
-    button {
-      font: inherit;
-      border-radius: 14px;
-      padding: 14px 16px;
-      border: 1px solid var(--line);
-    }
-
-    input {
-      flex: 1;
-      min-width: 0;
-      background: rgba(15, 33, 66, 0.92);
-      color: white;
-    }
-
-    input::placeholder {
-      color: var(--muted);
-    }
-
-    button {
-      border: 0;
-      background: var(--accent);
-      color: #07111f;
-      font-weight: 700;
-      cursor: pointer;
-      transition: transform 180ms ease, background-color 180ms ease;
-    }
-
-    button:hover,
-    button:focus-visible {
-      transform: translateY(-1px);
-      background: var(--accent-strong);
-      outline: none;
-    }
-
-    .status {
+    .statusline {
+      margin: 12px 0 0;
       color: var(--muted);
       font-size: 0.95rem;
-      margin-top: 4px;
     }
 
-    .error,
+    .search-panel,
+    .hero,
+    .section-card,
     .empty,
-    .dashboard {
+    .footer {
       border: 1px solid var(--line);
-      border-radius: 22px;
-      background: rgba(16, 36, 59, 0.95);
-      overflow: hidden;
-      backdrop-filter: blur(8px);
+      border-radius: 28px;
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow);
     }
 
-    .error {
-      padding: 16px 20px;
-      color: #ffbaba;
-      margin-bottom: 18px;
+    .search-panel {
+      padding: 16px;
+      position: sticky;
+      top: 14px;
+      z-index: 20;
+      background: rgba(10, 22, 40, 0.92);
     }
 
-    .empty {
-      padding: 64px 30px;
-      text-align: center;
-      color: var(--muted);
-      font-size: 1.05rem;
-    }
-
-    .empty b {
-      display: block;
-      font-size: 2.5rem;
-      margin-bottom: 16px;
-    }
-
-    .hero {
-      display: grid;
-      grid-template-columns: 1.3fr 0.9fr;
-      gap: 24px;
-      padding: 34px;
-      background: linear-gradient(120deg, rgba(36, 100, 167, 0.96), rgba(16, 36, 59, 0.96));
-      align-items: center;
-    }
-
-    .hero-content {
+    .search-form {
       display: grid;
       gap: 12px;
     }
 
-    .eyebrow {
+    .search-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .search-field { position: relative; }
+
+    .search-field input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(7, 17, 31, 0.86);
+      color: var(--text);
+      padding: 15px 16px;
+      font: inherit;
+      font-size: 1rem;
+      min-width: 0;
+      outline: none;
+    }
+
+    .search-field input::placeholder { color: #8ca3bf; }
+
+    .search-field input:focus {
+      border-color: rgba(139, 196, 255, 0.66);
+      box-shadow: 0 0 0 4px rgba(91, 178, 255, 0.14);
+    }
+
+    .suggestions {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      right: 0;
+      display: none;
+      background: #081224;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+      z-index: 30;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    .suggestions.visible { display: block; }
+
+    .suggestion {
+      width: 100%;
+      display: block;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      padding: 12px 14px;
+      font: inherit;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .suggestion:hover,
+    .suggestion:focus-visible {
+      background: rgba(139, 196, 255, 0.12);
+      outline: none;
+    }
+
+    .suggestion strong { display: block; font-weight: 700; }
+    .suggestion span { color: var(--muted); font-size: 0.9rem; }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .unit-toggle {
+      display: inline-flex;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .unit-toggle button,
+    .search-form button,
+    .example-chip,
+    .recent-chip {
+      font: inherit;
+      border: 0;
+      cursor: pointer;
+      transition: transform 170ms ease, background-color 170ms ease, border-color 170ms ease, color 170ms ease;
+    }
+
+    .unit-toggle button {
+      padding: 10px 14px;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 700;
+      min-width: 62px;
+    }
+
+    .unit-toggle button.active {
+      color: #07111f;
+      background: var(--accent);
+    }
+
+    .search-form button[type="submit"],
+    .example-chip {
+      border-radius: 16px;
+      background: linear-gradient(180deg, var(--accent), #73baff);
+      color: #07111f;
+      font-weight: 800;
+      padding: 14px 18px;
+    }
+
+    .search-form button[type="submit"]:hover,
+    .search-form button[type="submit"]:focus-visible,
+    .example-chip:hover,
+    .example-chip:focus-visible,
+    .recent-chip:hover,
+    .recent-chip:focus-visible,
+    .unit-toggle button:hover,
+    .unit-toggle button:focus-visible {
+      transform: translateY(-1px);
+      outline: none;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .recent-label {
+      color: var(--muted);
+      font-size: 0.92rem;
+      white-space: nowrap;
+    }
+
+    .chip-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .recent-chip {
+      padding: 9px 12px;
+      border-radius: 999px;
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .search-hint {
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .error,
+    .empty {
+      margin-top: 18px;
+      padding: 24px;
+    }
+
+    .error {
+      border: 1px solid rgba(241, 106, 140, 0.34);
+      border-radius: 22px;
+      background: rgba(55, 16, 34, 0.85);
+      color: #ffd1dc;
+    }
+
+    .empty {
+      display: grid;
+      gap: 20px;
+      align-items: center;
+      justify-items: center;
+      text-align: center;
+      margin-top: 18px;
+    }
+
+    .empty-icon {
+      width: 82px;
+      height: 82px;
+      display: grid;
+      place-items: center;
+      border-radius: 24px;
+      background: rgba(139, 196, 255, 0.12);
+      font-size: 2.1rem;
+    }
+
+    .empty h2,
+    .empty p { margin: 0; }
+    .empty p { color: var(--muted); line-height: 1.55; }
+
+    .example-grid {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .dashboard {
+      display: grid;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+      gap: 18px;
+      padding: 22px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at top right, rgba(255,255,255,0.08), transparent 28%),
+        linear-gradient(140deg, rgba(36, 100, 167, 0.96), rgba(12, 30, 53, 0.96));
+    }
+
+    body.night .hero {
+      background:
+        radial-gradient(circle at top right, rgba(186, 160, 255, 0.12), transparent 26%),
+        linear-gradient(140deg, rgba(20, 28, 68, 0.96), rgba(5, 10, 22, 0.96));
+    }
+
+    .hero-copy {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .location-line {
       margin: 0;
-      color: #cde6ff;
-      font-size: 0.85rem;
+      color: #d6ebff;
+      font-size: 0.88rem;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
 
-    .hero h2 {
+    .hero-copy h2 {
       margin: 0;
-      font-size: clamp(2rem, 3vw, 2.9rem);
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      line-height: 0.98;
+      letter-spacing: -0.03em;
     }
 
-    .hero p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    .summary {
+    .weather-summary {
       display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
       align-items: center;
-      gap: 16px;
-      margin-top: 10px;
     }
 
-    .weather-badge {
-      padding: 12px 16px;
+    .weather-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 14px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      color: var(--text);
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.09);
       font-weight: 700;
     }
 
-    .temp-card {
-      text-align: right;
-    }
-
-    .temp {
-      margin: 0;
-      font-size: clamp(3rem, 6vw, 4.8rem);
-      font-weight: 800;
-    }
-
-    .feels {
-      margin: 8px 0 0;
+    .hero-meta {
+      display: grid;
+      gap: 10px;
       color: var(--muted);
+      line-height: 1.55;
     }
 
-    .grid {
+    .hero-visual {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 1px;
-      background: var(--line);
+      align-content: space-between;
+      gap: 18px;
+      padding: 18px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
     }
 
-    section {
-      padding: 24px;
-      background: var(--card);
-      min-height: 220px;
-    }
-
-    section h3 {
-      margin: 0 0 18px;
-      color: #d5e9ff;
-      font-size: 1.1rem;
-    }
-
-    dl {
-      display: grid;
-      gap: 16px;
-      margin: 0;
-    }
-
-    .row {
+    .visual-top {
       display: flex;
       justify-content: space-between;
       gap: 14px;
-      align-items: center;
+      align-items: start;
       flex-wrap: wrap;
     }
 
-    dt {
-      color: var(--muted);
-    }
-
-    dd {
-      margin: 0;
-      text-align: right;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .footer {
-      margin-top: 22px;
-      padding: 16px 18px;
-      color: var(--muted);
-      font-size: 0.9rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      background: rgba(11, 22, 40, 0.9);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 18px;
-    }
-
-    .badge {
-      padding: 6px 12px;
-      border-radius: 999px;
-      background: rgba(139, 196, 255, 0.12);
-      color: #8bc4ff;
-      font-size: 0.85rem;
-      font-weight: 700;
-    }
-
     .sky-visual {
-      width: 92px;
-      height: 92px;
+      width: 108px;
+      height: 108px;
       position: relative;
       flex: none;
     }
@@ -288,17 +433,17 @@
     .sun,
     .moon {
       position: absolute;
-      inset: 17px;
+      inset: 19px;
       border-radius: 50%;
     }
 
     .sun {
       background: #ffd45c;
-      box-shadow: 0 0 22px 7px rgba(255, 205, 77, 0.5);
-      animation: sun-drift 2.8s ease-in-out infinite;
+      box-shadow: 0 0 28px 10px rgba(255, 205, 77, 0.45);
+      animation: sun-drift 3.2s ease-in-out infinite;
     }
 
-    .sun:before {
+    .sun::before {
       content: "";
       position: absolute;
       inset: -15px;
@@ -313,7 +458,7 @@
       animation: moon-float 4s ease-in-out infinite;
     }
 
-    .moon:after {
+    .moon::after {
       content: "";
       position: absolute;
       width: 18px;
@@ -321,109 +466,305 @@
       right: -3px;
       top: -5px;
       border-radius: 50%;
-      background: #2464a7;
+      background: #244f84;
     }
 
     .night .sun,
-    .day .moon {
-      display: none;
+    .day .moon { display: none; }
+
+    .main-temp {
+      margin: 0;
+      font-size: clamp(3rem, 7vw, 5.2rem);
+      line-height: 0.94;
+      font-weight: 900;
+      letter-spacing: -0.05em;
+    }
+
+    .secondary-temp {
+      margin: 10px 0 0;
+      color: rgba(255,255,255,0.88);
+      font-weight: 700;
+    }
+
+    .forecast-panel {
+      padding: 20px 22px;
+      background: var(--panel-strong);
+    }
+
+    .forecast-panel h3,
+    .section-card h3 {
+      margin: 0 0 16px;
+      font-size: 1.05rem;
+      color: #d5e9ff;
+    }
+
+    .forecast-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .forecast-item {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.06);
+      min-width: 0;
+    }
+
+    .forecast-item strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .forecast-item .time {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+
+    .forecast-item .mini-temp {
+      margin: 8px 0 0;
+      font-weight: 800;
+      font-size: 1.15rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .section-card {
+      padding: 18px;
+      background: var(--card);
+      min-width: 0;
+    }
+
+    .stat-list {
+      display: grid;
+      gap: 14px;
+      margin: 0;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .stat-row:last-child { border-bottom: 0; padding-bottom: 0; }
+
+    dt { color: var(--muted); }
+
+    dd {
+      margin: 0;
+      text-align: right;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 18px;
+      padding: 16px 18px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .badge {
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(139, 196, 255, 0.12);
+      color: #8bc4ff;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     @keyframes sun-spin { to { transform: rotate(360deg); } }
     @keyframes sun-drift { 0%,100% { transform: translateY(0) scale(1); opacity: .95; } 50% { transform: translateY(-8px) scale(1.08) rotate(7deg); opacity: 1; } }
     @keyframes moon-float { 50% { transform: translateY(-6px); } }
 
-    @media (max-width: 900px) {
+    @media (max-width: 960px) {
+      .top { grid-template-columns: 1fr; }
       .hero { grid-template-columns: 1fr; }
-      .temp-card { text-align: left; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .forecast-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
     @media (max-width: 720px) {
-      body { padding: 18px 12px; }
-      .top, .hero { flex-direction: column; align-items: stretch; }
-      .grid { grid-template-columns: 1fr; }
-      form { width: 100%; }
-      section { min-height: auto; }
+      main { width: min(100vw - 16px, 1200px); }
+      .search-row { grid-template-columns: 1fr; }
+      .actions, .footer, .visual-top { flex-direction: column; align-items: stretch; }
+      .search-panel { top: 8px; }
+      .forecast-strip { grid-template-columns: 1fr; }
+      .footer { text-align: center; }
     }
 
     @media (max-width: 420px) {
-      button, input { width: 100%; }
-      form { gap: 10px; }
+      .search-panel, .hero, .section-card, .forecast-panel, .empty, .footer { border-radius: 22px; }
+      .weather-pill, .search-form button[type="submit"], .unit-toggle button, .recent-chip, .example-chip { width: 100%; justify-content: center; }
+      .chip-row { display: grid; grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body class="{{ 'night' if result and not result.is_daytime else 'day' }}">
-  <main>
+  <main class="shell">
     <header class="top">
       <div class="branding">
-        <h1>Weather Bot</h1>
-        <p class="tag">Current conditions, clearly organized.</p>
-        <p class="status">Version {{ version }}</p>
+        <p class="eyebrow">Weather Bot</p>
+        <h1>Weather that reads like a dashboard.</h1>
+        <p class="tagline">Search any city, switch units instantly, and skim the forecast without digging through a wall of numbers.</p>
+        <p class="statusline">Version {{ version }}</p>
       </div>
-      <form action="/weather" method="post">
-        <input name="location" value="{{ request.form.get('location', '') }}" placeholder="Search a city..." aria-label="City name" required>
-        <button type="submit">Search</button>
-      </form>
+
+      <div class="search-panel">
+        <form class="search-form" id="searchForm" action="/weather" method="post" autocomplete="off">
+          <input type="hidden" name="units" id="unitsInput" value="{{ selected_units }}">
+          <div class="search-row">
+            <div class="search-field">
+              <label class="sr-only" for="locationInput">City name</label>
+              <input id="locationInput" name="location" value="{{ location }}" placeholder="Search a city, state, or country" aria-label="City name" required>
+              <div class="suggestions" id="suggestions" aria-label="Location suggestions"></div>
+            </div>
+            <div class="unit-toggle" role="group" aria-label="Temperature units">
+              <button type="button" class="{{ 'active' if selected_units == 'metric' else '' }}" data-unit="metric">°C</button>
+              <button type="button" class="{{ 'active' if selected_units == 'imperial' else '' }}" data-unit="imperial">°F</button>
+            </div>
+            <button type="submit">Search</button>
+          </div>
+
+          <div class="actions">
+            <div class="recent-label">Recent searches</div>
+            <div class="chip-row" id="recentSearches"></div>
+          </div>
+
+          <div class="search-hint">
+            <span>Try</span>
+            <button type="button" class="recent-chip example-chip" data-example="London">London</button>
+            <button type="button" class="recent-chip example-chip" data-example="Lagos">Lagos</button>
+            <button type="button" class="recent-chip example-chip" data-example="New York">New York</button>
+            <button type="button" class="recent-chip example-chip" data-example="Tokyo">Tokyo</button>
+          </div>
+        </form>
+      </div>
     </header>
 
     {% if error %}
-      <p class="error" role="alert">{{ error }}</p>
+      <div class="error" role="alert">{{ error }}</div>
     {% endif %}
 
     {% if result %}
-      <div class="dashboard">
+      <section class="dashboard" aria-label="Weather results">
         <div class="hero">
-          <div class="hero-content">
-            <p class="eyebrow">{{ result.country }} - {{ result.local_time }}</p>
+          <div class="hero-copy">
+            <p class="location-line">{{ result.country }} · {{ result.local_time }} · {{ result.units_label }}</p>
             <h2>{{ result.city }}</h2>
-            <p>{{ result.weather }}</p>
-            <div class="summary">
-              <span class="weather-badge">Feels like {{ result.feels_like }}</span>
-              <span class="weather-badge">Air quality: {{ result.air_quality }}</span>
+            <div class="weather-summary">
+              <span class="weather-pill">{{ result.weather_icon }} {{ result.weather_description }}</span>
+              <span class="weather-pill">Feels like {{ result.feels_like }}</span>
+              <span class="weather-pill">Air quality: {{ result.air_quality }}</span>
+            </div>
+            <div class="hero-meta">
+              <p>Sunrise {{ result.sunrise }} • Sunset {{ result.sunset }}</p>
+              <p>Search result matched to {{ result.latitude }}, {{ result.longitude }} and rendered in {{ result.units_label.lower() if result.units_label else 'selected units' }}.</p>
             </div>
           </div>
 
-          <div class="temp-card">
-            <p class="temp">{{ result.temperature }}</p>
-            <p class="feels">Sunrise {{ result.sunrise }} - Sunset {{ result.sunset }}</p>
+          <div class="hero-visual">
+            <div class="visual-top">
+              <div>
+                <p class="main-temp">{{ result.temperature }}</p>
+                <p class="secondary-temp">{{ result.weather }}</p>
+              </div>
+              <div class="sky-visual" aria-hidden="true">
+                <div class="sun"></div>
+                <div class="moon"></div>
+              </div>
+            </div>
+            <div class="hero-meta">
+              <p>Wind {{ result.wind_speed }} · {{ result.wind_direction }}</p>
+              <p>Visibility {{ result.visibility }} · Latitude {{ result.latitude }} / Longitude {{ result.longitude }}</p>
+            </div>
           </div>
         </div>
 
-        <div class="grid">
-          <section>
+        {% if result.forecast %}
+          <section class="section-card forecast-panel">
+            <h3>Next forecast</h3>
+            <div class="forecast-strip">
+              {% for item in result.forecast %}
+                <div class="forecast-item">
+                  <strong>{{ item.label }}</strong>
+                  <div class="time">{{ item.icon }} {{ item.description }}</div>
+                  <div class="mini-temp">{{ item.temperature }}</div>
+                </div>
+              {% endfor %}
+            </div>
+          </section>
+        {% endif %}
+
+        <div class="stats-grid">
+          <section class="section-card">
             <h3>Current conditions</h3>
-            <dl>
-              <div class="row"><dt>Humidity</dt><dd>{{ result.humidity }}</dd></div>
-              <div class="row"><dt>Pressure</dt><dd>{{ result.pressure }}</dd></div>
-              <div class="row"><dt>Visibility</dt><dd>{{ result.visibility }}</dd></div>
-              <div class="row"><dt>Day / Night</dt><dd>{{ 'Day' if result.is_daytime else 'Night' }}</dd></div>
+            <dl class="stat-list">
+              <div class="stat-row"><dt>Humidity</dt><dd>{{ result.humidity }}</dd></div>
+              <div class="stat-row"><dt>Pressure</dt><dd>{{ result.pressure }}</dd></div>
+              <div class="stat-row"><dt>Visibility</dt><dd>{{ result.visibility }}</dd></div>
+              <div class="stat-row"><dt>Day / Night</dt><dd>{{ 'Day' if result.is_daytime else 'Night' }}</dd></div>
             </dl>
           </section>
 
-          <section>
+          <section class="section-card">
             <h3>Wind</h3>
-            <dl>
-              <div class="row"><dt>Speed</dt><dd>{{ result.wind_speed }}</dd></div>
-              <div class="row"><dt>Direction</dt><dd>{{ result.wind_direction }}</dd></div>
-              <div class="row"><dt>Weather details</dt><dd>{{ result.weather }}</dd></div>
+            <dl class="stat-list">
+              <div class="stat-row"><dt>Speed</dt><dd>{{ result.wind_speed }}</dd></div>
+              <div class="stat-row"><dt>Direction</dt><dd>{{ result.wind_direction }}</dd></div>
+              <div class="stat-row"><dt>Conditions</dt><dd>{{ result.weather }}</dd></div>
             </dl>
           </section>
 
-          <section>
+          <section class="section-card">
             <h3>Location</h3>
-            <dl>
-              <div class="row"><dt>Latitude</dt><dd>{{ result.latitude }}</dd></div>
-              <div class="row"><dt>Longitude</dt><dd>{{ result.longitude }}</dd></div>
-              <div class="row"><dt>Status</dt><dd>{{ 'Clear' if 'Clear' in result.weather else 'Breezy' }}</dd></div>
+            <dl class="stat-list">
+              <div class="stat-row"><dt>Latitude</dt><dd>{{ result.latitude }}</dd></div>
+              <div class="stat-row"><dt>Longitude</dt><dd>{{ result.longitude }}</dd></div>
+              <div class="stat-row"><dt>Units</dt><dd>{{ result.units_label }}</dd></div>
             </dl>
           </section>
         </div>
-      </div>
+      </section>
     {% else %}
-      <div class="empty">
-        <b>??</b>
-        Search for a city to see its current weather report.
-      </div>
+      <section class="empty" aria-label="Empty weather state">
+        <div class="empty-icon">⛅</div>
+        <h2>Search a city to see the live weather view.</h2>
+        <p>Autocomplete will help you pick a matching location. Recent searches stay local in your browser so you can reopen them fast.</p>
+        <div class="example-grid">
+          <button type="button" class="example-chip" data-example="London">London</button>
+          <button type="button" class="example-chip" data-example="Lagos">Lagos</button>
+          <button type="button" class="example-chip" data-example="New York">New York</button>
+          <button type="button" class="example-chip" data-example="Tokyo">Tokyo</button>
+        </div>
+      </section>
     {% endif %}
 
     <footer class="footer">
@@ -434,8 +775,154 @@
 
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js');
+      navigator.serviceWorker.register('/service-worker.js').catch(() => {});
     }
+
+    const form = document.getElementById('searchForm');
+    const input = document.getElementById('locationInput');
+    const unitsInput = document.getElementById('unitsInput');
+    const suggestionBox = document.getElementById('suggestions');
+    const recentContainer = document.getElementById('recentSearches');
+    const unitButtons = Array.from(document.querySelectorAll('.unit-toggle button'));
+    const exampleButtons = Array.from(document.querySelectorAll('[data-example]'));
+    const recentKey = 'weather-bot-recent-searches';
+    let suggestionTimer = null;
+    let suggestionAbort = null;
+    let hideTimer = null;
+
+    function loadRecentSearches() {
+      try {
+        const raw = localStorage.getItem(recentKey);
+        const values = raw ? JSON.parse(raw) : [];
+        return Array.isArray(values) ? values : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveRecentSearch(search) {
+      const cleaned = search.trim();
+      if (!cleaned) return;
+      const values = loadRecentSearches().filter((item) => item.toLowerCase() !== cleaned.toLowerCase());
+      values.unshift(cleaned);
+      localStorage.setItem(recentKey, JSON.stringify(values.slice(0, 6)));
+      renderRecentSearches();
+    }
+
+    function renderRecentSearches() {
+      const values = loadRecentSearches();
+      recentContainer.innerHTML = '';
+      if (!values.length) {
+        recentContainer.innerHTML = '<span class="search-hint">No recent searches yet.</span>';
+        return;
+      }
+      values.forEach((value) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'recent-chip';
+        button.textContent = value;
+        button.addEventListener('click', () => {
+          input.value = value;
+          form.submit();
+        });
+        recentContainer.appendChild(button);
+      });
+    }
+
+    function setUnits(nextUnits) {
+      unitsInput.value = nextUnits;
+      unitButtons.forEach((button) => button.classList.toggle('active', button.dataset.unit === nextUnits));
+      if (input.value.trim()) {
+        form.submit();
+      }
+    }
+
+    function hideSuggestions() {
+      suggestionBox.classList.remove('visible');
+      suggestionBox.innerHTML = '';
+    }
+
+    function renderSuggestions(items) {
+      suggestionBox.innerHTML = '';
+      if (!items.length) {
+        hideSuggestions();
+        return;
+      }
+
+      items.forEach((item) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'suggestion';
+        button.innerHTML = `<strong>${item.display_name}</strong><span>Tap to load this location</span>`;
+        button.addEventListener('click', () => {
+          input.value = item.display_name;
+          hideSuggestions();
+          form.submit();
+        });
+        suggestionBox.appendChild(button);
+      });
+
+      suggestionBox.classList.add('visible');
+    }
+
+    async function fetchSuggestions(query) {
+      if (suggestionAbort) suggestionAbort.abort();
+      suggestionAbort = new AbortController();
+
+      try {
+        const response = await fetch(`/api/suggestions?q=${encodeURIComponent(query)}`, { signal: suggestionAbort.signal });
+        if (!response.ok) {
+          return [];
+        }
+        return await response.json();
+      } catch {
+        return [];
+      }
+    }
+
+    input.addEventListener('input', () => {
+      clearTimeout(suggestionTimer);
+      const query = input.value.trim();
+      if (!query) {
+        hideSuggestions();
+        return;
+      }
+
+      suggestionTimer = setTimeout(async () => {
+        const items = await fetchSuggestions(query);
+        renderSuggestions(items);
+      }, 160);
+    });
+
+    input.addEventListener('focus', () => {
+      if (suggestionBox.children.length) {
+        suggestionBox.classList.add('visible');
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(hideSuggestions, 120);
+    });
+
+    form.addEventListener('submit', () => {
+      if (input.value.trim()) {
+        saveRecentSearch(input.value);
+      }
+    });
+
+    unitButtons.forEach((button) => {
+      button.addEventListener('click', () => setUnits(button.dataset.unit));
+    });
+
+    exampleButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        input.value = button.dataset.example;
+        form.submit();
+      });
+    });
+
+    renderRecentSearches();
   </script>
 </body>
 </html>
