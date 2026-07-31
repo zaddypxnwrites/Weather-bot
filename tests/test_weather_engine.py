@@ -68,6 +68,35 @@ def test_get_location_suggestions_formats_candidates(monkeypatch):
     assert suggestions[1]["display_name"] == "London, Ontario, CA"
 
 
+def test_get_location_suggestions_deduplicates_results(monkeypatch):
+    monkeypatch.setenv("OPENWEATHER_API_KEY", "test-key")
+
+    class FakeResponse:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self._payload
+
+    def fake_get(url, timeout):
+        return FakeResponse(
+            [
+                {"name": "Laon", "state": "Hauts-de-France", "country": "FR"},
+                {"name": "Laon", "state": "Hauts-de-France", "country": "FR"},
+            ]
+        )
+
+    monkeypatch.setattr("weather_engine.requests.get", fake_get)
+
+    suggestions = get_location_suggestions("Laon")
+
+    assert len(suggestions) == 1
+    assert suggestions[0]["display_name"] == "Laon, Hauts-de-France, FR"
+
+
 def test_get_weather_report_supports_imperial_units(monkeypatch):
     monkeypatch.setenv("OPENWEATHER_API_KEY", "test-key")
 

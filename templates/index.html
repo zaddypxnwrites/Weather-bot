@@ -823,7 +823,7 @@
         button.textContent = value;
         button.addEventListener('click', () => {
           input.value = value;
-          form.submit();
+          form.requestSubmit();
         });
         recentContainer.appendChild(button);
       });
@@ -833,7 +833,7 @@
       unitsInput.value = nextUnits;
       unitButtons.forEach((button) => button.classList.toggle('active', button.dataset.unit === nextUnits));
       if (input.value.trim()) {
-        form.submit();
+        form.requestSubmit();
       }
     }
 
@@ -857,7 +857,7 @@
         button.addEventListener('click', () => {
           input.value = item.display_name;
           hideSuggestions();
-          form.submit();
+          form.requestSubmit();
         });
         suggestionBox.appendChild(button);
       });
@@ -883,7 +883,7 @@
     input.addEventListener('input', () => {
       clearTimeout(suggestionTimer);
       const query = input.value.trim();
-      if (!query) {
+      if (query.length < 2) {
         hideSuggestions();
         return;
       }
@@ -918,7 +918,7 @@
     exampleButtons.forEach((button) => {
       button.addEventListener('click', () => {
         input.value = button.dataset.example;
-        form.submit();
+        form.requestSubmit();
       });
     });
 

@@ -127,6 +127,7 @@ def get_location_suggestions(query, limit=5):
         return []
 
     suggestions = []
+    seen = set()
     for candidate in candidates[: max(1, min(int(limit), 8))]:
         if not isinstance(candidate, dict):
             continue
@@ -138,6 +139,10 @@ def get_location_suggestions(query, limit=5):
             parts.append(candidate["country"])
 
         display_name = ", ".join(part for part in parts if part)
+        key = display_name.lower()
+        if not display_name or key in seen:
+            continue
+        seen.add(key)
         suggestions.append(
             {
                 "name": candidate.get("name", ""),
