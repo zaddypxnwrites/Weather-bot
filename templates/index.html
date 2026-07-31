@@ -433,6 +433,7 @@
       height: 108px;
       position: relative;
       flex: none;
+      --cloud-alpha: 0.44;
     }
 
     .sun,
@@ -440,6 +441,69 @@
       position: absolute;
       inset: 19px;
       border-radius: 50%;
+      z-index: 2;
+    }
+
+    .cloud-ring {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .cloud {
+      position: absolute;
+      display: block;
+      width: 42px;
+      height: 17px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(240, 250, 255, 0.95), rgba(192, 220, 242, 0.9));
+      box-shadow: 0 8px 18px rgba(8, 18, 34, 0.26);
+      opacity: var(--cloud-alpha);
+      animation: cloud-breathe 4.8s ease-in-out infinite;
+    }
+
+    .cloud::before,
+    .cloud::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: inherit;
+    }
+
+    .cloud::before {
+      width: 17px;
+      height: 17px;
+      left: 7px;
+      top: -8px;
+    }
+
+    .cloud::after {
+      width: 15px;
+      height: 15px;
+      right: 8px;
+      top: -7px;
+    }
+
+    .cloud-a {
+      top: 11px;
+      left: -8px;
+      transform: rotate(-10deg);
+      animation-delay: 0s;
+    }
+
+    .cloud-b {
+      top: 19px;
+      right: -10px;
+      transform: scale(0.95) rotate(7deg);
+      animation-delay: 1s;
+    }
+
+    .cloud-c {
+      bottom: 13px;
+      left: 9px;
+      transform: scale(1.03) rotate(-3deg);
+      animation-delay: 2s;
     }
 
     .sun {
@@ -476,6 +540,15 @@
 
     .night .sun,
     .day .moon { display: none; }
+
+    .sky-visual.cloud-level-clear { --cloud-alpha: 0.2; }
+    .sky-visual.cloud-level-partly { --cloud-alpha: 0.42; }
+    .sky-visual.cloud-level-cloudy { --cloud-alpha: 0.72; }
+    .sky-visual.cloud-level-storm { --cloud-alpha: 0.84; }
+
+    body.night .cloud {
+      background: linear-gradient(180deg, rgba(224, 236, 255, 0.9), rgba(160, 182, 215, 0.88));
+    }
 
     .main-temp {
       margin: 0;
@@ -608,6 +681,10 @@
     @keyframes sun-spin { to { transform: rotate(360deg); } }
     @keyframes sun-drift { 0%,100% { transform: translateY(0) scale(1); opacity: .95; } 50% { transform: translateY(-8px) scale(1.08) rotate(7deg); opacity: 1; } }
     @keyframes moon-float { 50% { transform: translateY(-6px); } }
+    @keyframes cloud-breathe {
+      0%, 100% { transform: translateY(0) scale(0.97); opacity: calc(var(--cloud-alpha) * 0.78); }
+      50% { transform: translateY(-3px) scale(1.03); opacity: var(--cloud-alpha); }
+    }
 
     @media (max-width: 960px) {
       .top { grid-template-columns: 1fr; }
@@ -701,7 +778,12 @@
                 <p class="main-temp">{{ result.temperature }}</p>
                 <p class="secondary-temp">{{ result.weather }}</p>
               </div>
-              <div class="sky-visual" aria-hidden="true">
+              <div class="sky-visual" aria-hidden="true" data-weather="{{ (result.weather_description or result.weather or '')|lower }}">
+                <div class="cloud-ring">
+                  <span class="cloud cloud-a"></span>
+                  <span class="cloud cloud-b"></span>
+                  <span class="cloud cloud-c"></span>
+                </div>
                 <div class="sun"></div>
                 <div class="moon"></div>
               </div>
@@ -790,11 +872,28 @@
     const recentContainer = document.getElementById('recentSearches');
     const unitButtons = Array.from(document.querySelectorAll('.unit-toggle button'));
     const exampleButtons = Array.from(document.querySelectorAll('[data-example]'));
+    const skyVisual = document.querySelector('.sky-visual[data-weather]');
     const recentKey = 'weather-bot-recent-searches';
     let suggestionTimer = null;
     let suggestionAbort = null;
     let hideTimer = null;
     let activeSuggestionIndex = -1;
+
+    function getCloudLevel(weatherText) {
+      const text = (weatherText || '').toLowerCase();
+      if (!text) return 'partly';
+      if (text.includes('thunder') || text.includes('storm') || text.includes('squall') || text.includes('tornado')) return 'storm';
+      if (text.includes('overcast') || text.includes('broken clouds') || text.includes('cloud')) return 'cloudy';
+      if (text.includes('rain') || text.includes('drizzle') || text.includes('snow') || text.includes('mist') || text.includes('fog') || text.includes('haze')) return 'partly';
+      return 'clear';
+    }
+
+    function applySkyVisualState() {
+      if (!skyVisual) return;
+      const level = getCloudLevel(skyVisual.dataset.weather || '');
+      skyVisual.classList.remove('cloud-level-clear', 'cloud-level-partly', 'cloud-level-cloudy', 'cloud-level-storm');
+      skyVisual.classList.add(`cloud-level-${level}`);
+    }
 
     function getSuggestionButtons() {
       return Array.from(suggestionBox.querySelectorAll('.suggestion'));
@@ -996,6 +1095,7 @@
       });
     });
 
+    applySkyVisualState();
     renderRecentSearches();
   </script>
 </body>
