@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: Cozy Trading Bot
+    name: Cozy Weather Bot
     env: python
     plan: free
     autoDeploy: true
