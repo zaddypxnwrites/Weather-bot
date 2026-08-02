@@ -196,8 +196,21 @@ function bindUIEvents() {
 
       if (activeCategory === "Favorites") {
         renderFavoritesOnMap();
-      } else if (activeCategory === "Weather Satellite" || activeCategory === "Earth Imagery") {
+      } else if (activeCategory === "Weather Satellite") {
         toggleLayerPanel(true);
+        const precipRadio = document.querySelector('input[name="weatherOverlay"][value="precipitation"]');
+        if (precipRadio) {
+          precipRadio.checked = true;
+          handleWeatherOverlayChange("precipitation");
+        }
+        loadCameras("all", "");
+      } else if (activeCategory === "Earth Imagery") {
+        toggleLayerPanel(true);
+        const nasaRadio = document.querySelector('input[name="earthOverlay"][value="nasa-modis-terra"]');
+        if (nasaRadio) {
+          nasaRadio.checked = true;
+          handleEarthOverlayChange("nasa-modis-terra");
+        }
         loadCameras("all", "");
       } else {
         loadCameras(activeCategory, "");
