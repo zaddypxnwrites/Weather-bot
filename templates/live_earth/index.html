@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}Live Earth Platform | Cozy Weather Bot{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<link rel="stylesheet" href="/static/css/live_earth.css">
+{% endblock %}
+
+{% block content %}
+<div class="live-earth-container">
+  <!-- Left Sidebar -->
+  <aside class="le-sidebar" id="leSidebar">
+    <div class="sidebar-header">
+      <h2>🌍 Live Earth</h2>
+      <p class="sidebar-subtitle">Environmental Intelligence</p>
+    </div>
+
+    <nav class="category-menu" aria-label="Live Earth Categories">
+      <button type="button" class="cat-btn active" data-category="all">
+        <span class="cat-icon">🌐</span>
+        <span class="cat-label">All Feeds & Layers</span>
+      </button>
+      <button type="button" class="cat-btn" data-category="Public Cameras">
+        <span class="cat-icon">🌍</span>
+        <span class="cat-label">Public Cameras</span>
+      </button>
+      <button type="button" class="cat-btn" data-category="Traffic Cameras">
+        <span class="cat-icon">🚦</span>
+        <span class="cat-label">Traffic Cameras</span>
+      </button>
+      <button type="button" class="cat-btn" data-category="Weather Satellite">
+        <span class="cat-icon">🛰</span>
+        <span class="cat-label">Weather Satellite</span>
+      </button>
+      <button type="button" class="cat-btn" data-category="Earth Imagery">
+        <span class="cat-icon">🌎</span>
+        <span class="cat-label">Earth Imagery</span>
+      </button>
+      <button type="button" class="cat-btn" data-category="Airport Cameras">
+        <span class="cat-icon">✈</span>
+        <span class="cat-label">Airport Cameras</span>
+      </button>
+      <button type="button" class="cat-btn" data-category="Harbor Cameras">
+        <span class="cat-icon">🚢</span>
+        <span class="cat-label">Harbor Cameras</span>
+      </button>
+      <button type="button" class="cat-btn" data-category="Public Webcams">
+        <span class="cat-icon">🏖</span>
+        <span class="cat-label">Public Webcams</span>
+      </button>
+      <button type="button" class="cat-btn" data-category="Favorites">
+        <span class="cat-icon">⭐</span>
+        <span class="cat-label">Favorites</span>
+        <span class="fav-count-badge" id="favCount">0</span>
+      </button>
+    </nav>
+
+    <!-- Quick Example Searches -->
+    <div class="quick-examples">
+      <span class="quick-title">Popular Cities:</span>
+      <div class="quick-chips">
+        <button type="button" class="example-chip" onclick="executeQuickSearch('Lagos')">Lagos</button>
+        <button type="button" class="example-chip" onclick="executeQuickSearch('London')">London</button>
+        <button type="button" class="example-chip" onclick="executeQuickSearch('Paris')">Paris</button>
+        <button type="button" class="example-chip" onclick="executeQuickSearch('Tokyo')">Tokyo</button>
+        <button type="button" class="example-chip" onclick="executeQuickSearch('Dubai')">Dubai</button>
+        <button type="button" class="example-chip" onclick="executeQuickSearch('New York')">New York</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Platform Hub -->
+  <main class="le-main" id="leMain">
+    <!-- Top Action Search Bar -->
+    <div class="le-topbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="leSearchInput" placeholder="Search by Country, State, City, Landmark, or Airport (e.g. Lagos, London, Tokyo, SFO)..." value="{{ search_query }}">
+        <button type="button" id="leSearchBtn" class="search-action-btn">Search</button>
+      </div>
+
+      <div class="layer-quick-toggle">
+        <label class="toggle-switch">
+          <input type="checkbox" id="satelliteBasemapToggle">
+          <span class="slider"></span>
+          <span class="toggle-label">Satellite View</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Map & Layer Viewport -->
+    <div class="map-wrapper" id="mapWrapper">
+      <div id="leafletMap" class="leaflet-map-container"></div>
+
+      <!-- Map Floating Toolbar -->
+      <div class="map-toolbar">
+        <button type="button" class="map-tool-btn" id="btnZoomIn" title="Zoom In">+</button>
+        <button type="button" class="map-tool-btn" id="btnZoomOut" title="Zoom Out">&minus;</button>
+        <button type="button" class="map-tool-btn" id="btnLocateMe" title="Locate Me">📍</button>
+        <button type="button" class="map-tool-btn" id="btnResetView" title="Reset View">🏠</button>
+        <button type="button" class="map-tool-btn" id="btnRefresh" title="Refresh Feed & Layers">🔄</button>
+        <button type="button" class="map-tool-btn" id="btnToggleFullscreen" title="Fullscreen Mode">⛶</button>
+      </div>
+
+      <!-- Weather Satellite & Earth Observation Layer Control Drawer -->
+      <div class="layer-control-panel glass-card" id="layerControlPanel">
+        <div class="panel-header">
+          <h4>🛰 Layer Controls</h4>
+          <button type="button" class="close-panel-btn" onclick="toggleLayerPanel()">&times;</button>
+        </div>
+        <div class="panel-body">
+          <div class="layer-group">
+            <h5>Weather Satellite Overlays</h5>
+            <label class="radio-label">
+              <input type="radio" name="weatherOverlay" value="none" checked> None
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="weatherOverlay" value="precipitation"> 🌧 Rainfall Radar (RainViewer)
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="weatherOverlay" value="clouds"> ☁️ Cloud Cover (Global Satellite)
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="weatherOverlay" value="temp"> 🌡 Temperature Map
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="weatherOverlay" value="wind"> 💨 Wind Vectors
+            </label>
+          </div>
+
+          <div class="layer-group">
+            <h5>NASA Earth Observation</h5>
+            <label class="radio-label">
+              <input type="radio" name="earthOverlay" value="none" checked> None
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="earthOverlay" value="nasa-modis-terra"> 🌎 NASA Terra MODIS (Daily True Color)
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="earthOverlay" value="nasa-viirs-snpp"> 🛰 NASA VIIRS SNPP (High-Res)
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="earthOverlay" value="nasa-night-lights"> 🌃 NASA Earth at Night (Black Marble)
+            </label>
+          </div>
+          <p class="layer-note">Note: Earth observation satellite imagery is updated daily snapshot imagery from orbital satellite passes.</p>
+        </div>
+      </div>
+
+      <!-- Layer Panel Toggle Button -->
+      <button type="button" class="open-layer-panel-btn glass-card" onclick="toggleLayerPanel()">
+        🛰 Layers & Satellites
+      </button>
+
+      <!-- Animated Loading Overlay -->
+      <div class="map-loading-overlay" id="mapLoading">
+        <div class="spinner"></div>
+        <span>Synchronizing Live Earth Data...</span>
+      </div>
+    </div>
+
+    <!-- Bottom Status Panel & Information Cards -->
+    <div class="status-panel-grid">
+      <div class="status-card glass-card">
+        <div class="card-icon">⚡</div>
+        <div class="card-details">
+          <span class="card-label">Connection Status</span>
+          <span class="card-value status-online" id="statusConn">Online & Synced</span>
+        </div>
+      </div>
+
+      <div class="status-card glass-card">
+        <div class="card-icon">📡</div>
+        <div class="card-details">
+          <span class="card-label">Active Provider / Source</span>
+          <span class="card-value" id="statusSource">Public Transportation & Satellite APIs</span>
+        </div>
+      </div>
+
+      <div class="status-card glass-card">
+        <div class="card-icon">⏱</div>
+        <div class="card-details">
+          <span class="card-label">Last Refresh</span>
+          <span class="card-value" id="statusRefresh">Just Now</span>
+        </div>
+      </div>
+
+      <div class="status-card glass-card">
+        <div class="card-icon">🎥</div>
+        <div class="card-details">
+          <span class="card-label">Available Cameras</span>
+          <span class="card-value" id="statusCamCount">0 Cameras Found</span>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Live Camera Player Modal -->
+<div class="modal-overlay" id="cameraModal">
+  <div class="modal-card camera-modal-card">
+    <div class="modal-header">
+      <div class="cam-title-area">
+        <h3 id="camModalTitle">Camera Name</h3>
+        <span class="cam-badge" id="camModalBadge">Live Feed</span>
+      </div>
+      <div class="cam-modal-actions">
+        <button type="button" class="fav-star-btn" id="camFavBtn" title="Save to Favorites">⭐</button>
+        <button type="button" class="modal-close" onclick="closeCameraModal()">&times;</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <!-- Embed Player Frame -->
+      <div class="video-container" id="videoContainer">
+        <div class="no-camera-msg" id="noCamMsg" style="display:none;">
+          <span class="warning-icon">⚠️</span>
+          <h4>No public live camera is available for this location.</h4>
+          <p>No verified public webcams or transportation feeds were found for this coordinate. Never fabricating feeds.</p>
+          <button type="button" class="retry-btn" onclick="retryActiveSearch()" style="margin-top:14px; background: rgba(91, 178, 255, 0.2); border: 1px solid var(--accent); color: var(--text); padding: 8px 16px; border-radius: 8px; font-weight:700; cursor:pointer;">
+            🔄 Retry Search
+          </button>
+        </div>
+        <iframe id="camIframe" src="" frameborder="0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+      </div>
+
+      <div class="cam-meta-grid">
+        <div>
+          <strong>Location:</strong> <span id="camModalLocation">-</span>
+        </div>
+        <div>
+          <strong>Provider:</strong> <span id="camModalProvider">-</span>
+        </div>
+        <div>
+          <strong>Status:</strong> <span id="camModalStatus" class="status-online">Online</span>
+        </div>
+        <div>
+          <strong>Updated:</strong> <span id="camModalUpdated">-</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="/static/js/favorites.js"></script>
+<script src="/static/js/live_earth.js"></script>
+{% endblock %}

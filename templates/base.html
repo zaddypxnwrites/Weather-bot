@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Cozy Weather & Live Earth Platform{% endblock %}</title>
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <meta name="theme-color" content="#07111f">
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <!-- Fonts & Leaflet CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <link rel="stylesheet" href="/static/css/style.css">
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <!-- Navigation Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <a href="/" class="brand-logo">
+        <span class="logo-icon">🌐</span>
+        <span class="logo-text">Cozy Weather <span class="logo-badge">Live Earth</span></span>
+      </a>
+
+      <!-- Desktop Navigation Links -->
+      <nav class="desktop-nav" aria-label="Main Navigation">
+        <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Home</a>
+        <a href="/weather{% if location %}?location={{ location|urlencode }}&units={{ selected_units|default('metric') }}{% endif %}" class="nav-link {% if request.path == '/weather' %}active{% endif %}">Current Weather</a>
+        <a href="/{% if location %}?location={{ location|urlencode }}#forecast{% else %}#forecast{% endif %}" class="nav-link">Forecast</a>
+        <a href="/{% if location %}?location={{ location|urlencode }}#air-quality{% else %}#air-quality{% endif %}" class="nav-link">Air Quality</a>
+        <a href="/live-earth" class="nav-link {% if request.path == '/live-earth' %}active{% endif %}">Maps</a>
+        <a href="/live-earth" class="nav-link highlight {% if request.path == '/live-earth' %}active{% endif %}">
+          <span class="pulse-dot"></span> Live Earth
+        </a>
+        <button type="button" class="nav-link modal-btn" onclick="openAboutModal()">About</button>
+      </nav>
+
+      <!-- Mobile Menu Hamburger Button -->
+      <button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle Mobile Navigation">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </button>
+    </div>
+
+    <!-- Mobile Navigation Drawer -->
+    <nav class="mobile-nav" id="mobileNav" aria-label="Mobile Navigation">
+      <a href="/" class="mobile-link">Home</a>
+      <a href="/weather{% if location %}?location={{ location|urlencode }}&units={{ selected_units|default('metric') }}{% endif %}" class="mobile-link">Current Weather</a>
+      <a href="/{% if location %}?location={{ location|urlencode }}#forecast{% else %}#forecast{% endif %}" class="mobile-link">Forecast</a>
+      <a href="/{% if location %}?location={{ location|urlencode }}#air-quality{% else %}#air-quality{% endif %}" class="mobile-link">Air Quality</a>
+      <a href="/live-earth" class="mobile-link">Maps</a>
+      <a href="/live-earth" class="mobile-link highlight">🌍 Live Earth</a>
+      <button type="button" class="mobile-link modal-btn" onclick="openAboutModal(); closeMobileNav();">About Cozy Weather</button>
+    </nav>
+  </header>
+
+  <!-- Main Content Body -->
+  <div class="content-wrapper">
+    {% block content %}{% endblock %}
+  </div>
+
+  <!-- About Modal -->
+  <div class="modal-overlay" id="aboutModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>🌐 About Cozy Weather & Live Earth</h3>
+        <button type="button" class="modal-close" onclick="closeAboutModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p><strong>Cozy Weather</strong> is an advanced environmental intelligence platform providing real-time weather analytics, 5-day forecasts, clothing suggestions, air quality monitoring, and <strong>Live Earth</strong> observation capabilities.</p>
+        <hr class="modal-divider">
+        <h4>🌍 Live Earth Features</h4>
+        <ul>
+          <li><strong>Public & Traffic Cameras:</strong> Integrated official public camera directories for cities, highways, airports, and harbors.</li>
+          <li><strong>Weather Satellite Imagery:</strong> Real-time cloud cover, rain radar (RainViewer), temperature, and wind velocity overlays.</li>
+          <li><strong>Earth Observation:</strong> Daily high-resolution satellite imagery snapshots from NASA GIBS (Terra MODIS / VIIRS).</li>
+          <li><strong>Favorites System:</strong> Save and bookmark key locations, webcams, and satellite views locally.</li>
+        </ul>
+        <p class="modal-footer-note">Version {{ version|default('1.0.0') }} &bull; Powered by OpenWeatherMap, RainViewer, NASA GIBS, and Public Feeds.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Navigation toggle handlers
+    const mobileBtn = document.getElementById('mobileMenuBtn');
+    const mobileNav = document.getElementById('mobileNav');
+
+    if (mobileBtn && mobileNav) {
+      mobileBtn.addEventListener('click', () => {
+        mobileBtn.classList.toggle('open');
+        mobileNav.classList.toggle('open');
+      });
+    }
+
+    function closeMobileNav() {
+      if (mobileBtn && mobileNav) {
+        mobileBtn.classList.remove('open');
+        mobileNav.classList.remove('open');
+      }
+    }
+
+    function openAboutModal() {
+      document.getElementById('aboutModal').classList.add('active');
+    }
+
+    function closeAboutModal() {
+      document.getElementById('aboutModal').classList.remove('active');
+    }
+
+    window.addEventListener('click', (e) => {
+      const modal = document.getElementById('aboutModal');
+      if (e.target === modal) closeAboutModal();
+    });
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,12 +1,7 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Cozy Weather Bot</title>
-  <link rel="manifest" href="/static/manifest.webmanifest">
-  <meta name="theme-color" content="#07111f">
-  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+{% extends "base.html" %}
+{% block title %}{% if result %}{{ result.city }} Weather | Cozy Weather Bot{% else %}Cozy Weather Bot{% endif %}{% endblock %}
+{% block body_class %}{% if result and not result.is_daytime %}night{% endif %}{% endblock %}
+{% block extra_css %}
   <style>
     :root {
       --bg: #07111f;
@@ -842,8 +837,8 @@
       .chip-row { display: grid; grid-template-columns: 1fr; }
     }
   </style>
-</head>
-<body class="{{ 'night' if result and not result.is_daytime else 'day' }}">
+{% endblock %}
+{% block content %}
   <main class="shell">
     <header class="top">
       <div class="branding">
@@ -1258,5 +1253,4 @@
     applySkyVisualState();
     renderRecentSearches();
   </script>
-</body>
-</html>
+{% endblock %}

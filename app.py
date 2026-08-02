@@ -2,8 +2,11 @@ import os
 
 from flask import Flask, jsonify, render_template, request, send_from_directory
 from weather_engine import get_location_suggestions, get_weather_report, PROJECT_VERSION, normalize_units
+from routes.live_earth import live_earth_bp
 
 app = Flask(__name__)
+app.register_blueprint(live_earth_bp)
+
 
 
 @app.route('/', methods=['GET'])

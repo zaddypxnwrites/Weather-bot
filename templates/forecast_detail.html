@@ -1,10 +1,7 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Forecast Details | Cozy Weather Bot</title>
-  <meta name="theme-color" content="#07111f">
+{% extends "base.html" %}
+{% block title %}Forecast Details | Cozy Weather Bot{% endblock %}
+{% block body_class %}{{ 'day' if forecast and forecast.is_daytime else 'night' }}{% endblock %}
+{% block extra_css %}
   <style>
     :root {
       --panel: rgba(12, 24, 42, 0.9);
@@ -514,8 +511,8 @@
       .slot-row { grid-template-columns: 1fr; }
     }
   </style>
-</head>
-<body class="{{ 'day' if forecast and forecast.is_daytime else 'night' }}">
+{% endblock %}
+{% block content %}
   <main>
     <section class="topbar">
       <span class="badge">Cozy Weather Bot Forecast View</span>
@@ -636,5 +633,4 @@
 
     applySkyVisualState();
   </script>
-</body>
-</html>
+{% endblock %}
