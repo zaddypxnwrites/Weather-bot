@@ -1,12 +1,13 @@
-/* Live Earth Interactive Map & Controller */
-
 let map = null;
 let currentBaseLayer = null;
 let currentOverlayLayer = null;
 let markersGroup = null;
 let currentCameras = [];
+let allCamerasList = [];
 let activeCamera = null;
 let activeCategory = "all";
+let activeCamMode = "video";
+let autoRefreshTimer = null;
 
 const CARTO_DARK_URL = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png";
 const ESRI_SATELLITE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
@@ -17,6 +18,119 @@ document.addEventListener("DOMContentLoaded", () => {
   loadCameras(activeCategory, "");
   updateStatusPanel();
 });
+
+function loadCameras(category, query) {
+  showLoading(true);
+  const url = `/api/live-earth/cameras?category=${encodeURIComponent(category)}&q=${encodeURIComponent(query)}`;
+
+  fetch(url)
+    .then((res) => res.json())
+    .then((data) => {
+      showLoading(false);
+      if (data.status === "success") {
+        currentCameras = data.cameras || [];
+        if (!query) allCamerasList = currentCameras;
+        renderCameraMarkers(currentCameras);
+        updateStatusCamCount(currentCameras.length);
+
+        if (query && currentCameras.length === 0) {
+          alert(`No public live camera is available for "${query}".`);
+        }
+      }
+    })
+    .catch((err) => {
+      showLoading(false);
+      console.error("Error loading cameras:", err);
+    });
+}
+
+function handleSearch(query) {
+  if (!query || !query.trim()) return;
+
+  showLoading(true);
+  fetch(`/api/live-earth/search?q=${encodeURIComponent(query.trim())}`)
+    .then((res) => res.json())
+    .then((data) => {
+      showLoading(false);
+      const locations = data.locations || [];
+      const cameras = data.cameras || [];
+
+      if (locations.length > 0) {
+        const loc = locations[0];
+        map.setView([loc.lat, loc.lon], 11);
+      }
+
+      if (cameras.length > 0) {
+        currentCameras = cameras;
+        renderCameraMarkers(cameras);
+        updateStatusCamCount(cameras.length);
+
+        // Auto-open nearest/first camera if user searched explicitly
+        if (cameras[0]) {
+          openCameraModalById(cameras[0].id);
+        }
+      } else {
+        renderNoCameraMessage(query);
+      }
+    })
+    .catch((err) => {
+      showLoading(false);
+      console.error("Search error:", err);
+    });
+}
+
+function openCameraModalById(camId) {
+  const cam = currentCameras.find((c) => c.id === camId) ||
+              allCamerasList.find((c) => c.id === camId) ||
+              getFavorites().find((f) => f.id === camId);
+  if (!cam) return;
+
+  activeCamera = cam;
+  const modal = document.getElementById("cameraModal");
+  const title = document.getElementById("camModalTitle");
+  const badge = document.getElementById("camModalBadge");
+  const loc = document.getElementById("camModalLocation");
+  const prov = document.getElementById("camModalProvider");
+  const status = document.getElementById("camModalStatus");
+  const updated = document.getElementById("camModalUpdated");
+  const favBtn = document.getElementById("camFavBtn");
+
+  if (title) title.textContent = cam.name;
+  if (badge) badge.textContent = cam.category;
+  if (loc) loc.textContent = `${cam.city}, ${cam.state ? cam.state + ", " : ""}${cam.country}`;
+  if (prov) prov.textContent = cam.provider;
+  if (status) status.textContent = cam.status;
+  if (updated) updated.textContent = cam.last_updated;
+
+  if (favBtn) favBtn.classList.toggle("active", isFavorite(cam.id));
+
+  const defaultMode = (cam.embed_url && cam.type !== "image") ? "video" : "image";
+  switchCamMode(defaultMode);
+
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(() => {
+    if (activeCamMode === "image" && activeCamera) {
+      refreshCamFeed();
+    }
+  }, 5000);
+
+  modal?.classList.add("active");
+}
+
+function closeCameraModal() {
+  const modal = document.getElementById("cameraModal");
+  const iframe = document.getElementById("camIframe");
+  const imgElem = document.getElementById("camImg");
+  const noMsg = document.getElementById("noCamMsg");
+  if (iframe) iframe.src = "";
+  if (imgElem) imgElem.src = "";
+  if (noMsg) noMsg.style.display = "none";
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
+  modal?.classList.remove("active");
+}
 
 function initMap() {
   // Center on world view
@@ -328,54 +442,7 @@ function refreshCamFeed() {
   }
 }
 
-function openCameraModalById(camId) {
-  const cam = currentCameras.find((c) => c.id === camId) || getFavorites().find((f) => f.id === camId);
-  if (!cam) return;
 
-  activeCamera = cam;
-  const modal = document.getElementById("cameraModal");
-  const title = document.getElementById("camModalTitle");
-  const badge = document.getElementById("camModalBadge");
-  const loc = document.getElementById("camModalLocation");
-  const prov = document.getElementById("camModalProvider");
-  const status = document.getElementById("camModalStatus");
-  const updated = document.getElementById("camModalUpdated");
-  const favBtn = document.getElementById("camFavBtn");
-
-  if (title) title.textContent = cam.name;
-  if (badge) badge.textContent = cam.category;
-  if (loc) loc.textContent = `${cam.city}, ${cam.state ? cam.state + ", " : ""}${cam.country}`;
-  if (prov) prov.textContent = cam.provider;
-  if (status) status.textContent = cam.status;
-  if (updated) updated.textContent = cam.last_updated;
-
-  if (favBtn) favBtn.classList.toggle("active", isFavorite(cam.id));
-
-  const defaultMode = (cam.embed_url && cam.type !== "image") ? "video" : "image";
-  switchCamMode(defaultMode);
-
-  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
-  autoRefreshTimer = setInterval(() => {
-    if (activeCamMode === "image" && activeCamera) {
-      refreshCamFeed();
-    }
-  }, 10000);
-
-  modal?.classList.add("active");
-}
-
-function closeCameraModal() {
-  const modal = document.getElementById("cameraModal");
-  const iframe = document.getElementById("camIframe");
-  const imgElem = document.getElementById("camImg");
-  if (iframe) iframe.src = "";
-  if (imgElem) imgElem.src = "";
-  if (autoRefreshTimer) {
-    clearInterval(autoRefreshTimer);
-    autoRefreshTimer = null;
-  }
-  modal?.classList.remove("active");
-}
 
 function locateUser() {
   if (!navigator.geolocation) {
