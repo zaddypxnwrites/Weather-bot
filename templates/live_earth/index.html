@@ -212,6 +212,17 @@
       </div>
     </div>
     <div class="modal-body">
+      <!-- Stream Mode Bar -->
+      <div class="feed-mode-bar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="example-chip active" id="btnModeVideo" onclick="switchCamMode('video')" style="font-size:0.82rem; font-weight:600; padding:5px 10px;">🎥 Live Video</button>
+          <button type="button" class="example-chip" id="btnModeImage" onclick="switchCamMode('image')" style="font-size:0.82rem; font-weight:600; padding:5px 10px;">🖼️ Live Snapshot</button>
+        </div>
+        <button type="button" class="example-chip" onclick="refreshCamFeed()" style="font-size:0.8rem; padding:4px 10px;">
+          🔄 Refresh Stream
+        </button>
+      </div>
+
       <!-- Embed Player Frame -->
       <div class="video-container" id="videoContainer">
         <div class="no-camera-msg" id="noCamMsg" style="display:none;">
@@ -223,6 +234,7 @@
           </button>
         </div>
         <iframe id="camIframe" src="" frameborder="0" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+        <img id="camImg" src="" style="display:none; width:100%; height:100%; object-fit:contain; background:#000;" alt="Live Camera Stream">
       </div>
 
       <div class="cam-meta-grid">

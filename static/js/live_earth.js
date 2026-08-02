@@ -8,7 +8,7 @@ let currentCameras = [];
 let activeCamera = null;
 let activeCategory = "all";
 
-const CARTO_DARK_URL = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+const CARTO_DARK_URL = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png";
 const ESRI_SATELLITE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -28,6 +28,7 @@ function initMap() {
 
   currentBaseLayer = L.tileLayer(CARTO_DARK_URL, {
     maxZoom: 19,
+    subdomains: "abcd",
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CARTO',
   }).addTo(map);
 
@@ -42,6 +43,10 @@ function initMap() {
   } else {
     markersGroup = L.featureGroup().addTo(map);
   }
+
+  setTimeout(() => {
+    map.invalidateSize();
+  }, 250);
 }
 
 function bindUIEvents() {
@@ -60,6 +65,7 @@ function bindUIEvents() {
       } else {
         currentBaseLayer = L.tileLayer(CARTO_DARK_URL, {
           maxZoom: 19,
+          subdomains: "abcd",
           attribution: '&copy; OpenStreetMap &copy; CARTO',
         }).addTo(map);
         updateStatusSource("CartoDB Dark Matter Base");
@@ -266,6 +272,62 @@ function executeQuickSearch(city) {
   handleSearch(city);
 }
 
+let activeCamMode = "video";
+let autoRefreshTimer = null;
+
+function switchCamMode(mode) {
+  if (!activeCamera) return;
+  activeCamMode = mode;
+
+  const btnVideo = document.getElementById("btnModeVideo");
+  const btnImage = document.getElementById("btnModeImage");
+  const iframe = document.getElementById("camIframe");
+  const imgElem = document.getElementById("camImg");
+  const noMsg = document.getElementById("noCamMsg");
+
+  if (btnVideo) btnVideo.classList.toggle("active", mode === "video");
+  if (btnImage) btnImage.classList.toggle("active", mode === "image");
+
+  if (iframe) iframe.style.display = "none";
+  if (imgElem) imgElem.style.display = "none";
+  if (noMsg) noMsg.style.display = "none";
+
+  if (mode === "video" && activeCamera.embed_url) {
+    let embedUrl = activeCamera.embed_url;
+    if (embedUrl.includes("youtube.com/embed/") && !embedUrl.includes("autoplay=")) {
+      embedUrl += (embedUrl.includes("?") ? "&" : "?") + "autoplay=1&mute=1&rel=0";
+    }
+    iframe.src = embedUrl;
+    iframe.style.display = "block";
+  } else {
+    const streamUrl = activeCamera.fallback_stream || activeCamera.image_url || (activeCamera.type === "image" ? activeCamera.embed_url : null);
+    if (streamUrl && imgElem) {
+      const sep = streamUrl.includes("?") ? "&" : "?";
+      imgElem.src = streamUrl + sep + "t=" + Date.now();
+      imgElem.style.display = "block";
+    } else if (mode === "video" && !activeCamera.embed_url && streamUrl && imgElem) {
+      imgElem.src = streamUrl;
+      imgElem.style.display = "block";
+    } else if (noMsg) {
+      noMsg.style.display = "flex";
+    }
+  }
+}
+
+function refreshCamFeed() {
+  if (!activeCamera) return;
+  if (activeCamMode === "image") {
+    const imgElem = document.getElementById("camImg");
+    const streamUrl = activeCamera.fallback_stream || activeCamera.image_url;
+    if (imgElem && streamUrl) {
+      const sep = streamUrl.includes("?") ? "&" : "?";
+      imgElem.src = streamUrl + sep + "t=" + Date.now();
+    }
+  } else {
+    switchCamMode("video");
+  }
+}
+
 function openCameraModalById(camId) {
   const cam = currentCameras.find((c) => c.id === camId) || getFavorites().find((f) => f.id === camId);
   if (!cam) return;
@@ -274,8 +336,6 @@ function openCameraModalById(camId) {
   const modal = document.getElementById("cameraModal");
   const title = document.getElementById("camModalTitle");
   const badge = document.getElementById("camModalBadge");
-  const iframe = document.getElementById("camIframe");
-  const noMsg = document.getElementById("noCamMsg");
   const loc = document.getElementById("camModalLocation");
   const prov = document.getElementById("camModalProvider");
   const status = document.getElementById("camModalStatus");
@@ -291,14 +351,15 @@ function openCameraModalById(camId) {
 
   if (favBtn) favBtn.classList.toggle("active", isFavorite(cam.id));
 
-  if (cam.embed_url) {
-    noMsg.style.display = "none";
-    iframe.style.display = "block";
-    iframe.src = cam.embed_url;
-  } else {
-    iframe.style.display = "none";
-    noMsg.style.display = "flex";
-  }
+  const defaultMode = (cam.embed_url && cam.type !== "image") ? "video" : "image";
+  switchCamMode(defaultMode);
+
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(() => {
+    if (activeCamMode === "image" && activeCamera) {
+      refreshCamFeed();
+    }
+  }, 10000);
 
   modal?.classList.add("active");
 }
@@ -306,7 +367,13 @@ function openCameraModalById(camId) {
 function closeCameraModal() {
   const modal = document.getElementById("cameraModal");
   const iframe = document.getElementById("camIframe");
+  const imgElem = document.getElementById("camImg");
   if (iframe) iframe.src = "";
+  if (imgElem) imgElem.src = "";
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+  }
   modal?.classList.remove("active");
 }
 

@@ -4,17 +4,18 @@ from config.settings import NASA_GIBS_URL_TEMPLATE
 
 def get_earth_imagery_layers() -> list[dict]:
     """Retrieve NASA GIBS Earth Observation imagery tile layers with current date stamps."""
-    yesterday = (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%d")
+    # Use 2 days prior to guarantee complete global orbital composite synthesis
+    recent_date = (datetime.now(UTC) - timedelta(days=2)).strftime("%Y-%m-%d")
     
     layers = [
         {
             "id": "nasa-modis-terra",
             "name": "NASA MODIS Terra Corrected Reflectance",
             "provider": "NASA Earth Science Data and Information System (ESDIS) / GIBS",
-            "time": yesterday,
+            "time": recent_date,
             "url_template": NASA_GIBS_URL_TEMPLATE.format(
                 layer="MODIS_Terra_CorrectedReflectance_TrueColor",
-                time=yesterday,
+                time=recent_date,
                 z="{z}",
                 y="{y}",
                 x="{x}",
@@ -28,10 +29,10 @@ def get_earth_imagery_layers() -> list[dict]:
             "id": "nasa-viirs-snpp",
             "name": "NASA VIIRS SNPP True Color",
             "provider": "NASA Earth Science Data and Information System (ESDIS) / GIBS",
-            "time": yesterday,
+            "time": recent_date,
             "url_template": NASA_GIBS_URL_TEMPLATE.format(
                 layer="VIIRS_SNPP_CorrectedReflectance_TrueColor",
-                time=yesterday,
+                time=recent_date,
                 z="{z}",
                 y="{y}",
                 x="{x}",
