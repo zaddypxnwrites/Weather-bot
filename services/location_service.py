@@ -72,3 +72,58 @@ def geocode_nominatim(query: str) -> list[dict]:
         pass
     return []
 
+
+@lru_cache(maxsize=128)
+def reverse_geocode(lat: float, lon: float) -> dict:
+    """Reverse geocode lat/lon into city, state, country names."""
+    if OPENWEATHER_API_KEY:
+        try:
+            url = f"https://api.openweathermap.org/geo/1.0/reverse?lat={lat}&lon={lon}&limit=1&appid={OPENWEATHER_API_KEY}"
+            res = requests.get(url, timeout=5)
+            if res.status_code == 200 and res.json():
+                item = res.json()[0]
+                name = item.get("name", "Unknown Location")
+                state = item.get("state", "")
+                country = item.get("country", "")
+                parts = [p for p in [name, state, country] if p]
+                return {
+                    "display_name": ", ".join(parts),
+                    "city": name,
+                    "state": state,
+                    "country": country,
+                    "lat": lat,
+                    "lon": lon,
+                }
+        except Exception:
+            pass
+
+    # Nominatim fallback
+    try:
+        url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}"
+        headers = {"User-Agent": "CozyWeatherBot/1.0 (LiveEarthPlatform)"}
+        res = requests.get(url, headers=headers, timeout=5)
+        if res.status_code == 200:
+            data = res.json()
+            address = data.get("address", {})
+            city = address.get("city") or address.get("town") or address.get("village") or address.get("county") or "Coordinates Location"
+            country = address.get("country", "")
+            state = address.get("state", "")
+            return {
+                "display_name": data.get("display_name", f"{lat:.2f}, {lon:.2f}"),
+                "city": city,
+                "state": state,
+                "country": country,
+                "lat": lat,
+                "lon": lon,
+            }
+    except Exception:
+        pass
+
+    return {
+        "display_name": f"Lat {lat:.2f}, Lon {lon:.2f}",
+        "city": "Coordinates Location",
+        "state": "",
+        "country": "",
+        "lat": lat,
+        "lon": lon,
+    }
