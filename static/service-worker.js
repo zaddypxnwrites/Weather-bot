@@ -28,6 +28,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Ignore non-http/https requests (e.g. chrome-extension://)
+  if (!event.request.url.startsWith('http://') && !event.request.url.startsWith('https://')) {
+    return;
+  }
+
   const requestUrl = new URL(event.request.url);
   if (requestUrl.pathname.startsWith('/api/')) {
     return;
