@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function loadCameras(category, query) {
-  showLoading(true);
+  showLoading(true, "Loading camera feeds & satellite imagery...");
   const url = `/api/live-earth/cameras?category=${encodeURIComponent(category)}&q=${encodeURIComponent(query)}`;
 
   fetch(url)
@@ -32,6 +32,7 @@ function loadCameras(category, query) {
       showLoading(false);
       if (data.status === "success") {
         currentCameras = data.cameras || [];
+        console.log("CAMERAS RECEIVED:", currentCameras.length);
         if (!query) allCamerasList = currentCameras;
         renderCameraMarkers(currentCameras);
         updateStatusCamCount(currentCameras.length);
@@ -147,6 +148,8 @@ function closeCameraModal() {
 }
 
 function initMap() {
+  console.log("MAP INITIALIZATION STARTED");
+  
   // Center on world view
   map = L.map("leafletMap", {
     center: [20.0, 0.0],
@@ -158,7 +161,21 @@ function initMap() {
     maxZoom: 19,
     subdomains: "abcd",
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CARTO',
-  }).addTo(map);
+  });
+
+  currentBaseLayer.on("tileerror", function (err) {
+    console.warn("CartoDB tile loading error, applying OpenStreetMap fallback:", err);
+    if (map && currentBaseLayer) {
+      map.removeLayer(currentBaseLayer);
+      currentBaseLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+    }
+  });
+
+  currentBaseLayer.addTo(map);
+  console.log("MAP OBJECT:", map);
 
   if (typeof L.markerClusterGroup === "function") {
     markersGroup = L.markerClusterGroup({
@@ -172,9 +189,15 @@ function initMap() {
     markersGroup = L.featureGroup().addTo(map);
   }
 
-  setTimeout(() => {
-    map.invalidateSize();
-  }, 250);
+  [50, 250, 600, 1200].forEach((delay) => {
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, delay);
+  });
+
+  window.addEventListener("resize", () => {
+    if (map) map.invalidateSize();
+  });
 }
 
 function bindUIEvents() {
@@ -276,17 +299,24 @@ function bindUIEvents() {
   });
 }
 
-function showLoading(show) {
+function showLoading(show, message) {
   const overlay = document.getElementById("mapLoading");
-  if (overlay) overlay.classList.toggle("active", show);
+  if (overlay) {
+    overlay.classList.toggle("active", show);
+    if (message) {
+      const span = overlay.querySelector("span");
+      if (span) span.textContent = message;
+    }
+  }
 }
-
-
 
 function renderCameraMarkers(cameras) {
   markersGroup.clearLayers();
 
-  if (!cameras || cameras.length === 0) return;
+  if (!cameras || cameras.length === 0) {
+    console.log("MARKERS CREATED: 0");
+    return;
+  }
 
   const bounds = L.latLngBounds();
 
@@ -295,7 +325,7 @@ function renderCameraMarkers(cameras) {
       className: "custom-map-pin",
       html: `<div style="background: rgba(13,28,50,0.92); border: 2px solid #5bb2ff; color: #fff; padding: 4px 8px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
         <span>${getCategoryEmoji(cam.category)}</span>
-        <span>${cam.city}</span>
+        <span>${cam.city || "Camera"}</span>
       </div>`,
       iconSize: [110, 30],
       iconAnchor: [55, 15],
@@ -316,6 +346,9 @@ function renderCameraMarkers(cameras) {
     markersGroup.addLayer(marker);
   });
 
+  const createdCount = markersGroup.getLayers ? markersGroup.getLayers().length : cameras.length;
+  console.log("MARKERS CREATED:", createdCount);
+
   if (cameras.length === 1) {
     map.setView([cameras[0].lat, cameras[0].lon], 11);
   } else if (cameras.length > 1) {
@@ -324,6 +357,7 @@ function renderCameraMarkers(cameras) {
 }
 
 function getCategoryEmoji(cat) {
+  if (!cat || typeof cat !== "string") return "🌍";
   if (cat.includes("Traffic")) return "🚦";
   if (cat.includes("Airport")) return "✈";
   if (cat.includes("Harbor")) return "🚢";
@@ -340,8 +374,6 @@ function renderFavoritesOnMap() {
     alert("You have no saved favorites yet. Click the ⭐ star icon inside any camera feed to bookmark it!");
   }
 }
-
-
 
 function renderNoCameraMessage(query) {
   const noMsg = document.getElementById("noCamMsg");
@@ -416,14 +448,12 @@ function refreshCamFeed() {
   }
 }
 
-
-
 function locateUser() {
   if (!navigator.geolocation) {
     alert("Geolocation is not supported by your browser.");
     return;
   }
-  showLoading(true);
+  showLoading(true, "Detecting your current location...");
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       showLoading(false);
@@ -468,11 +498,12 @@ function handleWeatherOverlayChange(layerId) {
     return;
   }
 
-  showLoading(true);
+  showLoading(true, "Loading weather satellite overlay...");
   fetch("/api/live-earth/satellites")
     .then((res) => res.json())
     .then((data) => {
       showLoading(false);
+      console.log("SATELLITE DATA:", data);
       const layers = data.layers || [];
       const selected = layers.find((l) => l.id === layerId);
       if (selected && selected.url_template) {
@@ -480,10 +511,15 @@ function handleWeatherOverlayChange(layerId) {
           opacity: selected.opacity || 0.7,
           attribution: selected.attribution,
         }).addTo(map);
+        console.log("SATELLITE LAYER ADDED");
         updateStatusSource(selected.name);
       } else {
         alert("This layer requires an API key in your .env configuration.");
       }
+    })
+    .catch((err) => {
+      showLoading(false);
+      console.error("Satellite overlay error:", err);
     });
 }
 
@@ -495,11 +531,12 @@ function handleEarthOverlayChange(layerId) {
     return;
   }
 
-  showLoading(true);
+  showLoading(true, "Loading NASA Earth imagery...");
   fetch("/api/live-earth/earth-imagery")
     .then((res) => res.json())
     .then((data) => {
       showLoading(false);
+      console.log("SATELLITE DATA:", data);
       const layers = data.layers || [];
       const selected = layers.find((l) => l.id === layerId);
       if (selected && selected.url_template) {
@@ -507,8 +544,13 @@ function handleEarthOverlayChange(layerId) {
           opacity: selected.opacity || 0.85,
           attribution: selected.attribution,
         }).addTo(map);
+        console.log("SATELLITE LAYER ADDED");
         updateStatusSource(selected.name);
       }
+    })
+    .catch((err) => {
+      showLoading(false);
+      console.error("Earth imagery overlay error:", err);
     });
 }
 
