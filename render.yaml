@@ -12,6 +12,9 @@ services:
         sync: false
       - key: WINDY_WEBCAMS_API_KEY
         sync: false
+      - key: GROK_API_KEY
+        sync: false
+
 
 
 
