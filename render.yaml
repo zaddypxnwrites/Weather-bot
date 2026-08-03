@@ -10,5 +10,8 @@ services:
     envVars:
       - key: OPENWEATHER_API_KEY
         sync: false
+      - key: WINDY_WEBCAMS_API_KEY
+        sync: false
+
 
 
