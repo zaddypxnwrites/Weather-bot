@@ -591,8 +591,10 @@
           <div class="metric"><div class="label">Rain In 3h</div><div class="value">{{ forecast.rain_volume }}</div></div>
           <div class="metric"><div class="label">Snow In 3h</div><div class="value">{{ forecast.snow_volume }}</div></div>
           <div class="metric"><div class="label">Visibility</div><div class="value">{{ forecast.visibility }}</div></div>
-        </div>
-      </section>
+      <footer class="topbar" style="margin-top:14px; color:var(--muted); font-size:0.92rem;">
+        <span>Cozy Weather Bot &bull; <strong>Developer: Miles</strong></span>
+        <span class="badge">V{{ version }}</span>
+      </footer>
     {% endif %}
   </main>
 

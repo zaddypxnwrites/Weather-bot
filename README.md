@@ -2,6 +2,8 @@
 
 Cozy Weather is a modern environmental intelligence platform combining real-time weather analytics, 5-day forecasts, custom clothing recommendations, air quality monitoring, and an interactive **Live Earth** observation portal (`/live-earth`).
 
+**Developer:** Miles
+
 ---
 
 ## 🌟 Key Features
