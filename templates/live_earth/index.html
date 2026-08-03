@@ -128,12 +128,37 @@
         🛰 Layers & Satellites
       </button>
 
+      <!-- Floating Basemap Thumbnail Quick Switcher Panel -->
+      <div class="basemap-picker-inset glass-card" id="basemapPickerInset">
+        <div class="basemap-picker-title">🗺️ Basemap Style</div>
+        <div class="basemap-options">
+          <button type="button" class="bm-option active" data-bm="carto-dark" title="CartoDB Dark Vector">
+            <span class="bm-icon">🌃</span> Dark
+          </button>
+          <button type="button" class="bm-option" data-bm="esri-satellite" title="Esri World Satellite Imagery">
+            <span class="bm-icon">🛰️</span> Satellite
+          </button>
+          <button type="button" class="bm-option" data-bm="osm-streets" title="OpenStreetMap Street Layer">
+            <span class="bm-icon">🗺️</span> Streets
+          </button>
+          <button type="button" class="bm-option" data-bm="opentopo" title="OpenTopo Map Terrain">
+            <span class="bm-icon">⛰️</span> Topo
+          </button>
+        </div>
+      </div>
+
       <!-- Zoom Earth Style Floating Radar Timeline Scrubber Player Bar -->
       <div class="timeline-bar glass-card" id="timelineBar">
         <button type="button" class="timeline-btn" id="btnTimelinePrev" title="Previous Frame">⏮</button>
         <button type="button" class="timeline-btn play-btn" id="btnTimelinePlay" title="Play / Pause Radar Loop">▶</button>
         <button type="button" class="timeline-btn" id="btnTimelineNext" title="Next Frame">⏭</button>
         
+        <div class="speed-selector-group" style="display:flex; gap:4px; margin-right:8px;">
+          <button type="button" class="speed-btn" data-speed="1600" title="Slow Playback (0.5x)">0.5x</button>
+          <button type="button" class="speed-btn active" data-speed="800" title="Normal Playback (1x)">1x</button>
+          <button type="button" class="speed-btn" data-speed="400" title="Fast Playback (2x)">2x</button>
+        </div>
+
         <div class="timeline-scrubber-container">
           <input type="range" id="timelineRange" min="0" max="0" value="0" step="1">
           <span class="timeline-time-display" id="timelineTimeText">Live Radar</span>
@@ -151,6 +176,11 @@
           <span id="statusCamCount">61 Cameras</span>
         </div>
         <div class="status-hud-divider">|</div>
+        <div class="status-hud-item">
+          <span style="color:var(--accent); font-size:0.8rem;">🌐</span>
+          <span id="statusCoords" style="font-family: monospace; font-size: 0.8rem;">20.000° N, 0.000° E (z3)</span>
+        </div>
+        <div class="status-hud-divider">|</div>
         <div class="status-hud-item muted-text">
           <span id="statusSource">CartoDB & NASA GIBS</span>
         </div>
@@ -163,6 +193,13 @@
           <button type="button" class="close-panel-btn" onclick="toggleLayerPanel()">&times;</button>
         </div>
         <div class="panel-body">
+          <div class="layer-group opacity-control-group" style="margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--line);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <h5 style="margin:0;">🎚️ Overlay Layer Opacity</h5>
+              <span id="opacityValDisplay" style="font-size:0.85rem; font-weight:700; color:var(--accent);">80%</span>
+            </div>
+            <input type="range" id="layerOpacityRange" min="10" max="100" value="80" step="5" style="width:100%; accent-color:var(--accent); cursor:pointer;">
+          </div>
           <div class="layer-group">
             <h5>Live Weather Overlays (12 Layers)</h5>
             <label class="radio-label"><input type="radio" name="weatherOverlay" value="none" checked> None</label>

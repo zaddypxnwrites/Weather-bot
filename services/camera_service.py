@@ -29,11 +29,19 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return R * c
 
 
-def filter_cameras(category: str = None, query: str = None) -> list[dict]:
-    """Filter cameras by category and search query, with nearest location fallbacks."""
+def filter_cameras(category: str = None, query: str = None, lat: float = None, lon: float = None, radius_km: float = 500.0) -> list[dict]:
+    """Filter cameras by category, search query, or geographic proximity (lat, lon, radius_km)."""
     all_cameras = get_all_cameras()
     cameras = list(all_cameras)
-    
+
+    if lat is not None and lon is not None:
+        spatial_cameras = [
+            cam for cam in cameras
+            if calculate_distance(lat, lon, cam["lat"], cam["lon"]) <= radius_km
+        ]
+        if spatial_cameras:
+            return sorted(spatial_cameras, key=lambda c: calculate_distance(lat, lon, c["lat"], c["lon"]))
+
     if category and category.lower() not in ["all", "favorites", "⭐ favorites"]:
         norm_cat = category.strip().lower().replace("🌍 ", "").replace("🚦 ", "").replace("✈ ", "").replace("🚢 ", "").replace("🏖 ", "")
         cameras = [

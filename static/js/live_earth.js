@@ -12,6 +12,7 @@ let activeCategory = "all";
 let activeCamMode = "video";
 let autoRefreshTimer = null;
 let searchDebounceTimer = null;
+let currentLayerOpacity = 0.8;
 
 // Timeline Player State
 let timelineFrames = [];
@@ -73,6 +74,17 @@ function initMap() {
 
   currentBaseLayer.addTo(map);
   console.log("MAP OBJECT:", map);
+
+  // Live mouse cursor coordinate & zoom tracking
+  map.on("mousemove", (e) => {
+    const coordsElem = document.getElementById("statusCoords");
+    if (coordsElem && e.latlng) {
+      const latStr = e.latlng.lat >= 0 ? `${e.latlng.lat.toFixed(3)}° N` : `${Math.abs(e.latlng.lat).toFixed(3)}° S`;
+      const lonStr = e.latlng.lng >= 0 ? `${e.latlng.lng.toFixed(3)}° E` : `${Math.abs(e.latlng.lng).toFixed(3)}° W`;
+      const zoomLevel = map ? map.getZoom() : 3;
+      coordsElem.textContent = `${latStr}, ${lonStr} (z${zoomLevel})`;
+    }
+  });
 
   // Marker cluster groups
   if (typeof L.markerClusterGroup === "function") {
@@ -220,14 +232,16 @@ function renderCameraMarkers(cameras) {
   const bounds = L.latLngBounds();
 
   cameras.forEach((cam) => {
+    const catClass = getCategoryClass(cam.category);
     const customIcon = L.divIcon({
       className: "custom-map-pin",
-      html: `<div style="background: rgba(13,28,50,0.92); border: 2px solid #5bb2ff; color: #fff; padding: 4px 8px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+      html: `<div class="pin-badge-container ${catClass}">
+        <span class="live-pulse-badge"></span>
         <span>${getCategoryEmoji(cam.category)}</span>
         <span>${cam.city || "Camera"}</span>
       </div>`,
-      iconSize: [110, 30],
-      iconAnchor: [55, 15],
+      iconSize: [120, 32],
+      iconAnchor: [60, 16],
     });
 
     const marker = L.marker([cam.lat, cam.lon], { icon: customIcon });
@@ -313,6 +327,15 @@ function getCategoryEmoji(cat) {
   if (cat.includes("Harbor")) return "🚢";
   if (cat.includes("Webcam") || cat.includes("Public Webcams")) return "🏖";
   return "🌍";
+}
+
+function getCategoryClass(cat) {
+  if (!cat || typeof cat !== "string") return "cat-default";
+  if (cat.includes("Traffic")) return "cat-traffic";
+  if (cat.includes("Airport")) return "cat-airports";
+  if (cat.includes("Harbor")) return "cat-harbors";
+  if (cat.includes("Webcam") || cat.includes("Public Webcams")) return "cat-webcams";
+  return "cat-default";
 }
 
 // Map Click Interactive Weather Card
@@ -415,6 +438,25 @@ function initRadarTimeline() {
         const btnPrev = document.getElementById("btnTimelinePrev");
         const btnNext = document.getElementById("btnTimelineNext");
 
+        let timelineSpeedMs = 800;
+
+        document.querySelectorAll(".speed-btn").forEach((sBtn) => {
+          sBtn.addEventListener("click", (e) => {
+            document.querySelectorAll(".speed-btn").forEach((b) => b.classList.remove("active"));
+            e.currentTarget.classList.add("active");
+            timelineSpeedMs = parseInt(e.currentTarget.getAttribute("data-speed"), 10) || 800;
+
+            if (isTimelinePlaying) {
+              clearInterval(timelineTimer);
+              timelineTimer = setInterval(() => {
+                timelineIndex = (timelineIndex + 1) % timelineFrames.length;
+                if (range) range.value = timelineIndex;
+                updateTimelineFrame();
+              }, timelineSpeedMs);
+            }
+          });
+        });
+
         if (btnPlay) {
           btnPlay.addEventListener("click", () => {
             isTimelinePlaying = !isTimelinePlaying;
@@ -424,7 +466,7 @@ function initRadarTimeline() {
                 timelineIndex = (timelineIndex + 1) % timelineFrames.length;
                 if (range) range.value = timelineIndex;
                 updateTimelineFrame();
-              }, 900);
+              }, timelineSpeedMs);
             } else {
               clearInterval(timelineTimer);
               timelineTimer = null;
@@ -577,6 +619,49 @@ function bindUIEvents() {
   });
   document.getElementById("btnToggleFullscreen")?.addEventListener("click", toggleFullscreen);
 
+  // Basemap inset switcher buttons
+  document.querySelectorAll(".bm-option").forEach((bmBtn) => {
+    bmBtn.addEventListener("click", (e) => {
+      document.querySelectorAll(".bm-option").forEach((b) => b.classList.remove("active"));
+      const btn = e.currentTarget;
+      btn.classList.add("active");
+
+      const bmType = btn.getAttribute("data-bm");
+      if (currentBaseLayer) map.removeLayer(currentBaseLayer);
+
+      if (bmType === "esri-satellite") {
+        currentBaseLayer = L.tileLayer(ESRI_SATELLITE_URL, {
+          maxZoom: 18,
+          attribution: "Tiles &copy; Esri &mdash; Earthstar Geographics",
+        }).addTo(map);
+        updateStatusSource("Esri Satellite");
+        if (satToggle) satToggle.checked = true;
+      } else if (bmType === "osm-streets") {
+        currentBaseLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        }).addTo(map);
+        updateStatusSource("OpenStreetMap");
+        if (satToggle) satToggle.checked = false;
+      } else if (bmType === "opentopo") {
+        currentBaseLayer = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+          maxZoom: 17,
+          attribution: 'Map data &copy; OpenStreetMap, SRTM | Map style &copy; OpenTopoMap',
+        }).addTo(map);
+        updateStatusSource("OpenTopoMap");
+        if (satToggle) satToggle.checked = false;
+      } else {
+        currentBaseLayer = L.tileLayer(CARTO_DARK_URL, {
+          maxZoom: 19,
+          subdomains: "abcd",
+          attribution: '&copy; OpenStreetMap &copy; CARTO',
+        }).addTo(map);
+        updateStatusSource("CartoDB Dark");
+        if (satToggle) satToggle.checked = false;
+      }
+    });
+  });
+
   // Satellite Base map toggle
   const satToggle = document.getElementById("satelliteBasemapToggle");
   if (satToggle) {
@@ -589,6 +674,8 @@ function bindUIEvents() {
           attribution: "Tiles &copy; Esri &mdash; Earthstar Geographics",
         }).addTo(map);
         updateStatusSource("Esri Satellite");
+        document.querySelectorAll(".bm-option").forEach((b) => b.classList.remove("active"));
+        document.querySelector('.bm-option[data-bm="esri-satellite"]')?.classList.add("active");
       } else {
         currentBaseLayer = L.tileLayer(CARTO_DARK_URL, {
           maxZoom: 19,
@@ -596,6 +683,8 @@ function bindUIEvents() {
           attribution: '&copy; OpenStreetMap &copy; CARTO',
         }).addTo(map);
         updateStatusSource("CartoDB Dark");
+        document.querySelectorAll(".bm-option").forEach((b) => b.classList.remove("active"));
+        document.querySelector('.bm-option[data-bm="carto-dark"]')?.classList.add("active");
       }
     });
   }
@@ -609,6 +698,26 @@ function bindUIEvents() {
   document.querySelectorAll('input[name="earthOverlay"]').forEach((radio) => {
     radio.addEventListener("change", (e) => handleEarthOverlayChange(e.target.value));
   });
+
+  // Layer Opacity slider
+  const opacityRange = document.getElementById("layerOpacityRange");
+  const opacityValText = document.getElementById("opacityValDisplay");
+  if (opacityRange) {
+    opacityRange.addEventListener("input", (e) => {
+      const val = parseInt(e.target.value, 10);
+      currentLayerOpacity = val / 100.0;
+      if (opacityValText) opacityValText.textContent = `${val}%`;
+      if (currentOverlayLayer && typeof currentOverlayLayer.setOpacity === "function") {
+        currentOverlayLayer.setOpacity(currentLayerOpacity);
+      }
+      if (timelineOverlayLayer && typeof timelineOverlayLayer.setOpacity === "function") {
+        timelineOverlayLayer.setOpacity(currentLayerOpacity);
+      }
+      if (typeof currentEarthLayer !== "undefined" && currentEarthLayer && typeof currentEarthLayer.setOpacity === "function") {
+        currentEarthLayer.setOpacity(currentLayerOpacity);
+      }
+    });
+  }
 }
 
 function bindKeyboardShortcuts() {
@@ -682,7 +791,7 @@ function handleWeatherOverlayChange(layerId) {
       const selected = layers.find((l) => l.id === layerId);
       if (selected && selected.url_template) {
         currentOverlayLayer = L.tileLayer(selected.url_template, {
-          opacity: selected.opacity || 0.7,
+          opacity: currentLayerOpacity,
           attribution: selected.attribution,
         }).addTo(map);
         console.log("SATELLITE LAYER ADDED");
@@ -910,4 +1019,48 @@ function updateStatusSource(sourceName) {
 function updateStatusCamCount(count) {
   const elem = document.getElementById("statusCamCount");
   if (elem) elem.textContent = `${count} Cameras`;
+}
+
+function requestBrowserLocation() {
+  if (!navigator.geolocation) {
+    alert("Geolocation is not supported by your browser.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      if (userMarker) {
+        map.removeLayer(userMarker);
+      }
+
+      const pulseIcon = L.divIcon({
+        className: "user-location-marker",
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+
+      userMarker = L.marker([lat, lon], { icon: pulseIcon }).addTo(map);
+      userMarker.bindPopup("<b>📍 Your Current Location</b>").openPopup();
+
+      map.flyTo([lat, lon], 12, { animate: true, duration: 1.5 });
+
+      fetch(`/api/live-earth/cameras?lat=${lat}&lon=${lon}&radius=100`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === "success" && data.cameras) {
+            currentCameras = data.cameras;
+            renderCameraMarkers(currentCameras);
+            updateStatusCamCount(data.cameras.length);
+          }
+        })
+        .catch((err) => console.warn("Failed to load nearby webcams:", err));
+    },
+    (error) => {
+      console.warn("Geolocation permission error:", error.message);
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+  );
 }

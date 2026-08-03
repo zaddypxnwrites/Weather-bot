@@ -27,7 +27,11 @@ def live_earth_index():
 def api_cameras():
     category = request.args.get("category", "")
     query = request.args.get("q", "")
-    cameras = filter_cameras(category=category, query=query)
+    lat = request.args.get("lat", type=float)
+    lon = request.args.get("lon", type=float)
+    radius = request.args.get("radius", default=500.0, type=float)
+
+    cameras = filter_cameras(category=category, query=query, lat=lat, lon=lon, radius_km=radius)
     return jsonify({
         "status": "success",
         "count": len(cameras),
