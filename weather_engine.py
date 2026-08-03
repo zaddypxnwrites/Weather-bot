@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, UTC
 from urllib.parse import quote
 
 BASE_URL = "https://api.openweathermap.org"
-PROJECT_VERSION = "2.0.2"
+PROJECT_VERSION = "2.0.3"
 DEFAULT_UNITS = "metric"
 
 UNIT_CONFIG = {

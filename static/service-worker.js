@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cozy-trading-bot-v3';
+const CACHE_NAME = 'cozy-weather-bot-v5';
 const URLS_TO_CACHE = [
   '/',
   '/static/manifest.webmanifest',
@@ -6,9 +6,6 @@ const URLS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(URLS_TO_CACHE)),
-  );
   self.skipWaiting();
 });
 
@@ -16,7 +13,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)),
+        keys.map((key) => caches.delete(key))
       ),
     ),
   );
@@ -34,25 +31,25 @@ self.addEventListener('fetch', (event) => {
   }
 
   const requestUrl = new URL(event.request.url);
-  if (requestUrl.pathname.startsWith('/api/')) {
+
+  // Never cache API endpoints or JS/CSS static bundles
+  if (requestUrl.pathname.startsWith('/api/') || requestUrl.pathname.startsWith('/static/js/') || requestUrl.pathname.startsWith('/static/css/')) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
     return;
   }
 
+  // Network-First strategy for all other GET requests
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-          return networkResponse;
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
         }
-
-        const responseClone = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
         return networkResponse;
-      });
-    }),
+      })
+      .catch(() => caches.match(event.request))
   );
 });

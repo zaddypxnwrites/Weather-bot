@@ -175,7 +175,11 @@ def handle_internal_error(error):
 
 @app.route('/service-worker.js')
 def service_worker():
-    return send_from_directory(app.static_folder, 'service-worker.js', mimetype='application/javascript')
+    response = send_from_directory(app.static_folder, 'service-worker.js', mimetype='application/javascript')
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 if __name__ == '__main__':
