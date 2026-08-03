@@ -11,6 +11,7 @@ let activeCamera = null;
 let activeCategory = "all";
 let activeCamMode = "video";
 let autoRefreshTimer = null;
+let searchDebounceTimer = null;
 
 // Timeline Player State
 let timelineFrames = [];
@@ -21,10 +22,13 @@ let timelineOverlayLayer = null;
 
 const CARTO_DARK_URL = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png";
 const ESRI_SATELLITE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const LOCAL_STORAGE_SIDEBAR_KEY = "cozy_live_earth_sidebar_collapsed";
 
 document.addEventListener("DOMContentLoaded", () => {
   initMap();
+  initSidebarState();
   bindUIEvents();
+  bindKeyboardShortcuts();
   loadCameras(activeCategory, "");
   updateStatusPanel();
   initRadarTimeline();
@@ -34,13 +38,20 @@ document.addEventListener("DOMContentLoaded", () => {
 function initMap() {
   console.log("MAP INITIALIZATION STARTED");
 
-  // Hardware accelerated rendering via preferCanvas: true
+  // Physics inertia, hardware accelerated canvas, smooth zooming
   map = L.map("leafletMap", {
     center: [20.0, 0.0],
     zoom: 3,
     zoomControl: false,
     preferCanvas: true,
     bounceAtZoomLimits: false,
+    inertia: true,
+    inertiaDeceleration: 3000,
+    easeLinearity: 0.25,
+    zoomSnap: 0.5,
+    zoomDelta: 0.5,
+    fadeAnimation: true,
+    zoomAnimation: true,
   });
 
   currentBaseLayer = L.tileLayer(CARTO_DARK_URL, {
@@ -78,13 +89,13 @@ function initMap() {
 
   eventsGroup = L.featureGroup().addTo(map);
 
-  // Map Click Listener -> Open Detailed Weather Card
+  // Interactive Map Click Listener -> Weather Card Popup
   map.on("click", (e) => {
     fetchWeatherForCoordinates(e.latlng.lat, e.latlng.lng);
   });
 
-  // Responsive container sizing invalidation
-  [50, 250, 600, 1200].forEach((delay) => {
+  // Responsive Invalidation Triggers
+  [50, 150, 300, 600, 1200].forEach((delay) => {
     setTimeout(() => {
       if (map) map.invalidateSize();
     }, delay);
@@ -93,6 +104,46 @@ function initMap() {
   window.addEventListener("resize", () => {
     if (map) map.invalidateSize();
   });
+}
+
+// Sidebar Collapse & Expand with LocalStorage Memory
+function initSidebarState() {
+  const sidebar = document.getElementById("leSidebar");
+  const isCollapsed = localStorage.getItem(LOCAL_STORAGE_SIDEBAR_KEY) === "true";
+
+  if (sidebar && isCollapsed) {
+    sidebar.classList.add("collapsed");
+    updateFloatingSidebarBtn(true);
+  }
+}
+
+function toggleSidebar() {
+  const sidebar = document.getElementById("leSidebar");
+  if (!sidebar) return;
+
+  const willCollapse = !sidebar.classList.contains("collapsed");
+  sidebar.classList.toggle("collapsed", willCollapse);
+  localStorage.setItem(LOCAL_STORAGE_SIDEBAR_KEY, willCollapse);
+
+  updateFloatingSidebarBtn(willCollapse);
+
+  // Invalidate map size after smooth CSS transition
+  setTimeout(() => {
+    if (map) map.invalidateSize();
+  }, 320);
+}
+
+function updateFloatingSidebarBtn(isCollapsed) {
+  const btnFloat = document.getElementById("btnExpandSidebarFloating");
+  const floatingSearch = document.querySelector(".floating-search-hud");
+
+  if (btnFloat) {
+    btnFloat.style.display = isCollapsed ? "block" : "none";
+  }
+
+  if (floatingSearch) {
+    floatingSearch.style.left = isCollapsed ? "130px" : "16px";
+  }
 }
 
 function requestBrowserLocation() {
@@ -124,7 +175,7 @@ function requestBrowserLocation() {
 }
 
 function loadCameras(category, query) {
-  showLoading(true, "Loading camera feeds & satellite imagery...");
+  showLoading(true, "Loading camera feeds...");
   const url = `/api/live-earth/cameras?category=${encodeURIComponent(category)}&q=${encodeURIComponent(query)}`;
 
   fetch(url)
@@ -143,8 +194,8 @@ function loadCameras(category, query) {
 
         const connElem = document.getElementById("statusConn");
         if (connElem) {
-          connElem.textContent = "Online & Synced";
-          connElem.className = "card-value status-online";
+          connElem.textContent = "Synced";
+          connElem.className = "status-hud-dot";
         }
       }
     })
@@ -153,8 +204,7 @@ function loadCameras(category, query) {
       console.error("Error loading cameras:", err);
       const connElem = document.getElementById("statusConn");
       if (connElem) {
-        connElem.textContent = "Offline / API Error";
-        connElem.className = "card-value status-offline";
+        connElem.textContent = "Offline";
       }
     });
 }
@@ -206,7 +256,7 @@ function renderCameraMarkers(cameras) {
 }
 
 function loadLiveEvents() {
-  showLoading(true, "Fetching active NASA EONET natural events...");
+  showLoading(true, "Loading active NASA natural events...");
   fetch("/api/live-earth/events")
     .then((res) => res.json())
     .then((data) => {
@@ -238,7 +288,7 @@ function loadLiveEvents() {
         eventsGroup.addLayer(marker);
       });
 
-      updateStatusSource(`NASA EONET (${events.length} Live Natural Events)`);
+      updateStatusSource(`NASA EONET (${events.length} Events)`);
     })
     .catch((err) => {
       showLoading(false);
@@ -473,6 +523,10 @@ function sendAiMessage() {
 }
 
 function bindUIEvents() {
+  // Sidebar collapse toggle buttons
+  document.getElementById("btnToggleSidebar")?.addEventListener("click", toggleSidebar);
+  document.getElementById("btnExpandSidebarFloating")?.addEventListener("click", toggleSidebar);
+
   // Category menu buttons
   document.querySelectorAll(".cat-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -493,12 +547,20 @@ function bindUIEvents() {
     });
   });
 
-  // Search input button
+  // Search input button with 300ms debounce
   const searchBtn = document.getElementById("leSearchBtn");
   const searchInput = document.getElementById("leSearchInput");
 
   if (searchBtn && searchInput) {
     searchBtn.addEventListener("click", () => handleSearch(searchInput.value));
+    searchInput.addEventListener("input", (e) => {
+      if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        if (e.target.value.length >= 3) {
+          handleSearch(e.target.value);
+        }
+      }, 350);
+    });
     searchInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") handleSearch(searchInput.value);
     });
@@ -526,14 +588,14 @@ function bindUIEvents() {
           maxZoom: 18,
           attribution: "Tiles &copy; Esri &mdash; Earthstar Geographics",
         }).addTo(map);
-        updateStatusSource("Esri World Imagery Satellite");
+        updateStatusSource("Esri Satellite");
       } else {
         currentBaseLayer = L.tileLayer(CARTO_DARK_URL, {
           maxZoom: 19,
           subdomains: "abcd",
           attribution: '&copy; OpenStreetMap &copy; CARTO',
         }).addTo(map);
-        updateStatusSource("CartoDB Dark Matter Base");
+        updateStatusSource("CartoDB Dark");
       }
     });
   }
@@ -546,6 +608,25 @@ function bindUIEvents() {
   // Earth overlay radios
   document.querySelectorAll('input[name="earthOverlay"]').forEach((radio) => {
     radio.addEventListener("change", (e) => handleEarthOverlayChange(e.target.value));
+  });
+}
+
+function bindKeyboardShortcuts() {
+  document.addEventListener("keydown", (e) => {
+    // Ignore keypress if typing inside input boxes
+    if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+
+    if (e.key === "b" || e.key === "B") {
+      toggleSidebar();
+    } else if (e.key === "f" || e.key === "F") {
+      toggleFullscreen();
+    } else if (e.key === "h" || e.key === "H") {
+      if (map) map.setView([20.0, 0.0], 3);
+    } else if (e.key === "+" || e.key === "=") {
+      if (map) map.zoomIn();
+    } else if (e.key === "-") {
+      if (map) map.zoomOut();
+    }
   });
 }
 
@@ -591,7 +672,7 @@ function handleWeatherOverlayChange(layerId) {
     return;
   }
 
-  showLoading(true, "Loading weather satellite overlay...");
+  showLoading(true, "Loading weather layers...");
   fetch("/api/live-earth/satellites")
     .then((res) => res.json())
     .then((data) => {
@@ -700,7 +781,7 @@ function closeCameraModal() {
   modal?.classList.remove("active");
 }
 
-function showLoading(show, message = "Synchronizing Live Earth Data...") {
+function showLoading(show, message = "Loading Live Earth Platform...") {
   const overlay = document.getElementById("mapLoading");
   const textElem = document.getElementById("mapLoadingText");
   if (overlay) {
@@ -816,8 +897,8 @@ function updateStatusPanel() {
   fetch("/api/live-earth/status")
     .then((res) => res.json())
     .then((data) => {
-      document.getElementById("statusConn").textContent = data.connection_status || "Online";
-      document.getElementById("statusRefresh").textContent = data.last_refresh || "Just Now";
+      const connElem = document.getElementById("statusConn");
+      if (connElem) connElem.textContent = data.connection_status || "Synced";
     });
 }
 
@@ -828,5 +909,5 @@ function updateStatusSource(sourceName) {
 
 function updateStatusCamCount(count) {
   const elem = document.getElementById("statusCamCount");
-  if (elem) elem.textContent = `${count} Cameras Found`;
+  if (elem) elem.textContent = `${count} Cameras`;
 }

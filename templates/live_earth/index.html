@@ -6,16 +6,21 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-<link rel="stylesheet" href="/static/css/live_earth.css?v={{ version|default('1.0.2') }}">
+<link rel="stylesheet" href="/static/css/live_earth.css?v={{ version|default('1.0.3') }}">
 {% endblock %}
 
 {% block content %}
-<div class="live-earth-container">
-  <!-- Left Sidebar -->
+<div class="live-earth-container" id="liveEarthContainer">
+  <!-- Left Collapsible Sidebar -->
   <aside class="le-sidebar" id="leSidebar">
     <div class="sidebar-header">
-      <h2>🌍 Live Earth</h2>
-      <p class="sidebar-subtitle">Environmental Intelligence</p>
+      <div class="header-title-group">
+        <h2>🌍 Live Earth</h2>
+        <p class="sidebar-subtitle">Environmental Intelligence</p>
+      </div>
+      <button type="button" class="sidebar-collapse-btn" id="btnToggleSidebar" title="Collapse / Expand Sidebar (Shortcut: B)">
+        ◀
+      </button>
     </div>
 
     <nav class="category-menu" aria-label="Live Earth Categories">
@@ -41,7 +46,7 @@
       </button>
       <button type="button" class="cat-btn" data-category="Live Events">
         <span class="cat-icon">🔥</span>
-        <span class="cat-label">Live Events (NASA EONET)</span>
+        <span class="cat-label">Live Events (NASA)</span>
       </button>
       <button type="button" class="cat-btn" data-category="Airport Cameras">
         <span class="cat-icon">✈</span>
@@ -62,9 +67,9 @@
       </button>
     </nav>
 
-    <!-- Quick Example Searches -->
+    <!-- Popular Cities Quick Search Chips -->
     <div class="quick-examples">
-      <span class="quick-title">Popular Cities:</span>
+      <span class="quick-title">Popular Locations:</span>
       <div class="quick-chips">
         <button type="button" class="example-chip" onclick="executeQuickSearch('Lagos')">Lagos</button>
         <button type="button" class="example-chip" onclick="executeQuickSearch('London')">London</button>
@@ -76,42 +81,46 @@
     </div>
   </aside>
 
-  <!-- Main Platform Hub -->
+  <!-- Sidebar Expand Button (visible when sidebar is collapsed) -->
+  <button type="button" class="sidebar-expand-floating-btn glass-card" id="btnExpandSidebarFloating" title="Open Menu (B)">
+    ▶ Categories
+  </button>
+
+  <!-- Main Immersive Viewport -->
   <main class="le-main" id="leMain">
-    <!-- Top Action Search Bar -->
-    <div class="le-topbar">
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="leSearchInput" placeholder="Search by Country, State, City, Landmark, or Airport (e.g. Lagos, London, Tokyo, SFO)..." value="{{ search_query }}">
-        <button type="button" id="leSearchBtn" class="search-action-btn">Search</button>
-      </div>
-
-      <div class="layer-quick-toggle">
-        <label class="toggle-switch">
-          <input type="checkbox" id="satelliteBasemapToggle">
-          <span class="slider"></span>
-          <span class="toggle-label">Satellite View</span>
-        </label>
-      </div>
-    </div>
-
-    <!-- Map & Layer Viewport -->
+    <!-- Map Canvas Viewport (Occupies 90-95% of space) -->
     <div class="map-wrapper" id="mapWrapper">
       <div id="leafletMap" class="leaflet-map-container"></div>
 
-      <!-- Map Floating Toolbar -->
+      <!-- Top Floating Search HUD Overlay -->
+      <div class="floating-search-hud glass-card">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="leSearchInput" placeholder="Search city, country, landmark, or airport (e.g. Lagos, London, Tokyo, SFO)..." value="{{ search_query }}">
+          <button type="button" id="leSearchBtn" class="search-action-btn">Search</button>
+        </div>
+        <div class="layer-quick-toggle">
+          <label class="toggle-switch">
+            <input type="checkbox" id="satelliteBasemapToggle">
+            <span class="slider"></span>
+            <span class="toggle-label">Satellite</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Map Control Toolbar (Right Floating) -->
       <div class="map-toolbar">
-        <button type="button" class="map-tool-btn" id="btnZoomIn" title="Zoom In">+</button>
-        <button type="button" class="map-tool-btn" id="btnZoomOut" title="Zoom Out">&minus;</button>
+        <button type="button" class="map-tool-btn" id="btnZoomIn" title="Zoom In (+)">+</button>
+        <button type="button" class="map-tool-btn" id="btnZoomOut" title="Zoom Out (-)">&minus;</button>
         <button type="button" class="map-tool-btn" id="btnLocateMe" title="Detect & Center My Location">📍</button>
-        <button type="button" class="map-tool-btn" id="btnResetView" title="Reset View">🏠</button>
+        <button type="button" class="map-tool-btn" id="btnResetView" title="Reset View (Home)">🏠</button>
         <button type="button" class="map-tool-btn" id="btnRefresh" title="Refresh Feed & Layers">🔄</button>
-        <button type="button" class="map-tool-btn" id="btnToggleFullscreen" title="Fullscreen Mode">⛶</button>
+        <button type="button" class="map-tool-btn" id="btnToggleFullscreen" title="Fullscreen Mode (F)">⛶</button>
       </div>
 
       <!-- Floating AI Assistant Trigger Button -->
       <button type="button" class="open-ai-drawer-btn glass-card" id="btnOpenAiDrawer" onclick="toggleAiDrawer()">
-        ✨ Cozy AI Earth Assistant
+        ✨ Cozy AI Earth
       </button>
 
       <!-- Layer Panel Toggle Button -->
@@ -119,7 +128,7 @@
         🛰 Layers & Satellites
       </button>
 
-      <!-- Zoom Earth Style Floating Radar Timeline Player Bar -->
+      <!-- Zoom Earth Style Floating Radar Timeline Scrubber Player Bar -->
       <div class="timeline-bar glass-card" id="timelineBar">
         <button type="button" class="timeline-btn" id="btnTimelinePrev" title="Previous Frame">⏮</button>
         <button type="button" class="timeline-btn play-btn" id="btnTimelinePlay" title="Play / Pause Radar Loop">▶</button>
@@ -131,7 +140,23 @@
         </div>
       </div>
 
-      <!-- Weather Satellite & Earth Observation Layer Control Drawer -->
+      <!-- Bottom Floating Status HUD Badge Cluster -->
+      <div class="floating-status-hud glass-card">
+        <div class="status-hud-item">
+          <span class="status-hud-dot"></span>
+          <span id="statusConn">Synced</span>
+        </div>
+        <div class="status-hud-divider">|</div>
+        <div class="status-hud-item">
+          <span id="statusCamCount">61 Cameras</span>
+        </div>
+        <div class="status-hud-divider">|</div>
+        <div class="status-hud-item muted-text">
+          <span id="statusSource">CartoDB & NASA GIBS</span>
+        </div>
+      </div>
+
+      <!-- Layer Control Drawer -->
       <div class="layer-control-panel glass-card" id="layerControlPanel">
         <div class="panel-header">
           <h4>🛰 Layer & Satellite Controls</h4>
@@ -140,73 +165,31 @@
         <div class="panel-body">
           <div class="layer-group">
             <h5>Live Weather Overlays (12 Layers)</h5>
-            <label class="radio-label">
-              <input type="radio" name="weatherOverlay" value="none" checked> None
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="weatherOverlay" value="precipitation"> 🌧 Rainfall Radar (RainViewer)
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="weatherOverlay" value="clouds"> ☁️ Cloud Cover (Global Satellite)
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="weatherOverlay" value="temp"> 🌡 Temperature Map
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="weatherOverlay" value="wind"> 💨 Wind Vectors
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="weatherOverlay" value="pressure"> 📉 Barometric Pressure
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="weatherOverlay" value="humidity"> 💧 Relative Humidity
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="weatherOverlay" value="air_quality"> 😷 Air Quality Index (AQI)
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="weatherOverlay" value="lightning"> ⚡ Lightning Strike Network
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="weatherOverlay" value="snow"> ❄️ Snow Depth & Cover
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="weatherOverlay" value="sst"> 🌊 Sea Surface Temp (NASA MUR)
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="weatherOverlay" value="ocean_currents"> 🌀 Ocean Currents (NASA OSCAR)
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="weatherOverlay" value="night_lights"> 🌃 NASA Earth at Night (Black Marble)
-            </label>
+            <label class="radio-label"><input type="radio" name="weatherOverlay" value="none" checked> None</label>
+            <label class="radio-label"><input type="radio" name="weatherOverlay" value="precipitation"> 🌧 Rainfall Radar (RainViewer)</label>
+            <label class="radio-label"><input type="radio" name="weatherOverlay" value="clouds"> ☁️ Cloud Cover (Global Satellite)</label>
+            <label class="radio-label"><input type="radio" name="weatherOverlay" value="temp"> 🌡 Temperature Map</label>
+            <label class="radio-label"><input type="radio" name="weatherOverlay" value="wind"> 💨 Wind Vectors</label>
+            <label class="radio-label"><input type="radio" name="weatherOverlay" value="pressure"> 📉 Barometric Pressure</label>
+            <label class="radio-label"><input type="radio" name="weatherOverlay" value="humidity"> 💧 Relative Humidity</label>
+            <label class="radio-label"><input type="radio" name="weatherOverlay" value="air_quality"> 😷 Air Quality Index (AQI)</label>
+            <label class="radio-label"><input type="radio" name="weatherOverlay" value="lightning"> ⚡ Lightning Strikes</label>
+            <label class="radio-label"><input type="radio" name="weatherOverlay" value="snow"> ❄️ Snow Depth & Cover</label>
+            <label class="radio-label"><input type="radio" name="weatherOverlay" value="sst"> 🌊 Sea Surface Temp (NASA)</label>
+            <label class="radio-label"><input type="radio" name="weatherOverlay" value="ocean_currents"> 🌀 Ocean Currents (NASA)</label>
+            <label class="radio-label"><input type="radio" name="weatherOverlay" value="night_lights"> 🌃 NASA Earth at Night</label>
           </div>
 
           <div class="layer-group">
             <h5>Satellite Imagery Providers</h5>
-            <label class="radio-label">
-              <input type="radio" name="earthOverlay" value="none" checked> None
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="earthOverlay" value="nasa-modis-terra"> 🌎 NASA Terra MODIS (True Color)
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="earthOverlay" value="nasa-viirs-snpp"> 🛰 NASA VIIRS SNPP (High-Res)
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="earthOverlay" value="nasa-noaa-20"> 🛰 NASA NOAA-20 VIIRS
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="earthOverlay" value="goes-east"> 🌐 GOES-East (Americas)
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="earthOverlay" value="goes-west"> 🌐 GOES-West (Pacific)
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="earthOverlay" value="meteosat"> 🌍 Meteosat (Europe & Africa)
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="earthOverlay" value="himawari"> 🌏 Himawari (Asia & Australia)
-            </label>
+            <label class="radio-label"><input type="radio" name="earthOverlay" value="none" checked> None</label>
+            <label class="radio-label"><input type="radio" name="earthOverlay" value="nasa-modis-terra"> 🌎 NASA Terra MODIS (True Color)</label>
+            <label class="radio-label"><input type="radio" name="earthOverlay" value="nasa-viirs-snpp"> 🛰 NASA VIIRS SNPP (High-Res)</label>
+            <label class="radio-label"><input type="radio" name="earthOverlay" value="nasa-noaa-20"> 🛰 NASA NOAA-20 VIIRS</label>
+            <label class="radio-label"><input type="radio" name="earthOverlay" value="goes-east"> 🌐 GOES-East (Americas)</label>
+            <label class="radio-label"><input type="radio" name="earthOverlay" value="goes-west"> 🌐 GOES-West (Pacific)</label>
+            <label class="radio-label"><input type="radio" name="earthOverlay" value="meteosat"> 🌍 Meteosat (Europe & Africa)</label>
+            <label class="radio-label"><input type="radio" name="earthOverlay" value="himawari"> 🌏 Himawari (Asia & Australia)</label>
           </div>
           <p class="layer-note">Note: Earth imagery composites are updated daily snapshots from orbital and geostationary satellite passes.</p>
         </div>
@@ -221,12 +204,12 @@
         <div class="panel-body ai-body">
           <div class="ai-messages" id="aiMessages">
             <div class="ai-msg bot">
-              <p>Hello! I am your Cozy Earth AI Assistant. Ask me anything about current weather patterns, NASA satellite imagery, tropical storms, or travel conditions!</p>
+              <p>Hello! Ask me anything about current weather patterns, NASA satellite imagery, tropical storms, or travel conditions!</p>
             </div>
           </div>
           <div class="ai-quick-prompts">
-            <button type="button" class="example-chip" onclick="sendAiQuickPrompt('Explain current storm and cyclone patterns')">🌀 Explain Storms</button>
-            <button type="button" class="example-chip" onclick="sendAiQuickPrompt('Summarize weather for Lagos, Nigeria')">🇳🇬 Lagos Weather</button>
+            <button type="button" class="example-chip" onclick="sendAiQuickPrompt('Explain current storm and cyclone patterns')">🌀 Storms</button>
+            <button type="button" class="example-chip" onclick="sendAiQuickPrompt('Summarize weather for Lagos, Nigeria')">🇳🇬 Lagos</button>
             <button type="button" class="example-chip" onclick="sendAiQuickPrompt('Explain NASA satellite MODIS vs VIIRS imagery')">🛰 Satellite Info</button>
           </div>
           <div class="ai-input-row">
@@ -236,45 +219,10 @@
         </div>
       </div>
 
-      <!-- Animated Loading Overlay -->
+      <!-- Contextual Loading Overlay with Skeleton Spinner -->
       <div class="map-loading-overlay" id="mapLoading">
         <div class="spinner"></div>
-        <span id="mapLoadingText">Synchronizing Live Earth Data...</span>
-      </div>
-    </div>
-
-    <!-- Bottom Status Panel & Information Cards -->
-    <div class="status-panel-grid">
-      <div class="status-card glass-card">
-        <div class="card-icon">⚡</div>
-        <div class="card-details">
-          <span class="card-label">Connection Status</span>
-          <span class="card-value status-online" id="statusConn">Online & Synced</span>
-        </div>
-      </div>
-
-      <div class="status-card glass-card">
-        <div class="card-icon">📡</div>
-        <div class="card-details">
-          <span class="card-label">Active Provider / Source</span>
-          <span class="card-value" id="statusSource">Public Transportation & Satellite APIs</span>
-        </div>
-      </div>
-
-      <div class="status-card glass-card">
-        <div class="card-icon">⏱</div>
-        <div class="card-details">
-          <span class="card-label">Last Refresh</span>
-          <span class="card-value" id="statusRefresh">Just Now</span>
-        </div>
-      </div>
-
-      <div class="status-card glass-card">
-        <div class="card-icon">🎥</div>
-        <div class="card-details">
-          <span class="card-label">Available Cameras</span>
-          <span class="card-value" id="statusCamCount">0 Cameras Found</span>
-        </div>
+        <span id="mapLoadingText">Loading Live Earth Platform...</span>
       </div>
     </div>
   </main>
@@ -320,18 +268,10 @@
       </div>
 
       <div class="cam-meta-grid">
-        <div>
-          <strong>Location:</strong> <span id="camModalLocation">-</span>
-        </div>
-        <div>
-          <strong>Provider:</strong> <span id="camModalProvider">-</span>
-        </div>
-        <div>
-          <strong>Status:</strong> <span id="camModalStatus" class="status-online">Online</span>
-        </div>
-        <div>
-          <strong>Updated:</strong> <span id="camModalUpdated">-</span>
-        </div>
+        <div><strong>Location:</strong> <span id="camModalLocation">-</span></div>
+        <div><strong>Provider:</strong> <span id="camModalProvider">-</span></div>
+        <div><strong>Status:</strong> <span id="camModalStatus" class="status-online">Online</span></div>
+        <div><strong>Updated:</strong> <span id="camModalUpdated">-</span></div>
       </div>
     </div>
   </div>
@@ -360,6 +300,6 @@
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="/static/js/favorites.js?v={{ version|default('1.0.2') }}"></script>
-<script src="/static/js/live_earth.js?v={{ version|default('1.0.2') }}"></script>
+<script src="/static/js/favorites.js?v={{ version|default('1.0.3') }}"></script>
+<script src="/static/js/live_earth.js?v={{ version|default('1.0.3') }}"></script>
 {% endblock %}
