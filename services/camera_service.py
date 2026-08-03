@@ -82,55 +82,49 @@ def get_camera_by_id(cam_id: str) -> dict | None:
 
 
 def fetch_windy_webcams() -> list[dict]:
-    """Wrapper to query Windy Webcams API (v3/v2) if API key is supplied."""
+    """Wrapper to query Windy Webcams API (v3) if API key is supplied."""
     if not WINDY_WEBCAMS_API_KEY:
         return []
     
     headers = {"x-windy-api-key": WINDY_WEBCAMS_API_KEY}
-    # Try Windy v3 API first, fallback to v2
-    urls = [
-        "https://api.windy.com/api/webcams/v3/webcams?limit=25&include=location,player,urls",
-        "https://api.windy.com/api/webcams/v2/list/limit=20?show=webcams:url,location,player"
-    ]
+    url = "https://api.windy.com/webcams/api/v3/webcams?limit=50&include=location,player,urls"
     
-    for url in urls:
-        try:
-            res = requests.get(url, headers=headers, timeout=5)
-            if res.status_code != 200:
-                continue
-            data = res.json()
-            webcams = data.get("webcams", []) or data.get("result", {}).get("webcams", [])
-            if not webcams:
-                continue
-                
-            results = []
-            for wc in webcams:
-                player = wc.get("player", {})
-                embed_url = player.get("day", {}).get("embed", "") if isinstance(player, dict) else ""
-                if not embed_url and isinstance(player, dict):
-                    embed_url = player.get("live", {}).get("embed", "") or player.get("lifetime", {}).get("embed", "")
-                    
-                loc = wc.get("location", {})
-                cam_obj = Camera(
-                    id=f"windy-{wc.get('webcamId') or wc.get('id')}",
-                    name=wc.get("title", "Public Webcam"),
-                    category="Public Webcams",
-                    city=loc.get("city", "Unknown"),
-                    state=loc.get("region", "") or loc.get("state", ""),
-                    country=loc.get("country", "Global"),
-                    lat=float(loc.get("latitude", loc.get("lat", 0.0))),
-                    lon=float(loc.get("longitude", loc.get("lon", 0.0))),
-                    type="embed",
-                    embed_url=embed_url,
-                    status="Online",
-                    provider="Windy Webcams API",
-                    last_updated="Live",
-                )
-                results.append(cam_obj.to_dict())
-            if results:
-                return results
-        except Exception:
-            continue
+    try:
+        res = requests.get(url, headers=headers, timeout=5)
+        if res.status_code != 200:
+            return []
+        data = res.json()
+        webcams = data.get("webcams", [])
+        if not webcams:
+            return []
             
-    return []
+        results = []
+        for wc in webcams:
+            player = wc.get("player", {})
+            embed_url = ""
+            if isinstance(player, dict):
+                embed_url = player.get("day") or player.get("lifetime") or player.get("month") or ""
+            elif isinstance(player, str):
+                embed_url = player
+                
+            loc = wc.get("location", {})
+            cam_obj = Camera(
+                id=f"windy-{wc.get('webcamId') or wc.get('id')}",
+                name=wc.get("title", "Public Webcam"),
+                category="Public Webcams",
+                city=loc.get("city", "Unknown"),
+                state=loc.get("region", "") or loc.get("state", ""),
+                country=loc.get("country", "Global"),
+                lat=float(loc.get("latitude", 0.0)),
+                lon=float(loc.get("longitude", 0.0)),
+                type="embed",
+                embed_url=embed_url,
+                status="Online",
+                provider="Windy Webcams API",
+                last_updated="Live Stream",
+            )
+            results.append(cam_obj.to_dict())
+        return results
+    except Exception:
+        return []
 

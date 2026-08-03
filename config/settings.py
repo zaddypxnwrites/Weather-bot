@@ -25,6 +25,10 @@ load_dotenv()
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
 GROK_API_KEY = os.getenv("GROK_API_KEY", "")
 WINDY_WEBCAMS_API_KEY = os.getenv("WINDY_WEBCAMS_API_KEY", "")
+WINDY_PLUGIN_API_KEY = os.getenv("WINDY_PLUGIN_API_KEY", "")
+WINDY_MAP_FORECAST_API_KEY = os.getenv("WINDY_MAP_FORECAST_API_KEY", "")
+WINDY_POINT_FORECAST_API_KEY = os.getenv("WINDY_POINT_FORECAST_API_KEY", "")
+
 
 # Tile Server Providers
 CARTO_DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
