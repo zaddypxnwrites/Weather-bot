@@ -2,12 +2,22 @@ let map = null;
 let currentBaseLayer = null;
 let currentOverlayLayer = null;
 let markersGroup = null;
+let eventsGroup = null;
+let userMarker = null;
+
 let currentCameras = [];
 let allCamerasList = [];
 let activeCamera = null;
 let activeCategory = "all";
 let activeCamMode = "video";
 let autoRefreshTimer = null;
+
+// Timeline Player State
+let timelineFrames = [];
+let timelineIndex = 0;
+let timelineTimer = null;
+let isTimelinePlaying = false;
+let timelineOverlayLayer = null;
 
 const CARTO_DARK_URL = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png";
 const ESRI_SATELLITE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
@@ -17,7 +27,101 @@ document.addEventListener("DOMContentLoaded", () => {
   bindUIEvents();
   loadCameras(activeCategory, "");
   updateStatusPanel();
+  initRadarTimeline();
+  requestBrowserLocation();
 });
+
+function initMap() {
+  console.log("MAP INITIALIZATION STARTED");
+
+  // Hardware accelerated rendering via preferCanvas: true
+  map = L.map("leafletMap", {
+    center: [20.0, 0.0],
+    zoom: 3,
+    zoomControl: false,
+    preferCanvas: true,
+    bounceAtZoomLimits: false,
+  });
+
+  currentBaseLayer = L.tileLayer(CARTO_DARK_URL, {
+    maxZoom: 19,
+    subdomains: "abcd",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CARTO',
+  });
+
+  currentBaseLayer.on("tileerror", function (err) {
+    console.warn("CartoDB tile loading error, applying OpenStreetMap fallback:", err);
+    if (map && currentBaseLayer) {
+      map.removeLayer(currentBaseLayer);
+      currentBaseLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(map);
+    }
+  });
+
+  currentBaseLayer.addTo(map);
+  console.log("MAP OBJECT:", map);
+
+  // Marker cluster groups
+  if (typeof L.markerClusterGroup === "function") {
+    markersGroup = L.markerClusterGroup({
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      maxClusterRadius: 45,
+    });
+    map.addLayer(markersGroup);
+  } else {
+    markersGroup = L.featureGroup().addTo(map);
+  }
+
+  eventsGroup = L.featureGroup().addTo(map);
+
+  // Map Click Listener -> Open Detailed Weather Card
+  map.on("click", (e) => {
+    fetchWeatherForCoordinates(e.latlng.lat, e.latlng.lng);
+  });
+
+  // Responsive container sizing invalidation
+  [50, 250, 600, 1200].forEach((delay) => {
+    setTimeout(() => {
+      if (map) map.invalidateSize();
+    }, delay);
+  });
+
+  window.addEventListener("resize", () => {
+    if (map) map.invalidateSize();
+  });
+}
+
+function requestBrowserLocation() {
+  if (!navigator.geolocation) return;
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      map.setView([lat, lon], 9);
+
+      if (userMarker) map.removeLayer(userMarker);
+
+      const pulseIcon = L.divIcon({
+        className: "custom-user-marker",
+        html: `<div class="user-location-pulse" title="Your Location"></div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+      });
+
+      userMarker = L.marker([lat, lon], { icon: pulseIcon }).addTo(map);
+      fetchWeatherForCoordinates(lat, lon, true);
+    },
+    (err) => {
+      console.log("Geolocation permission declined or unavailable:", err.message);
+    },
+    { timeout: 8000 }
+  );
+}
 
 function loadCameras(category, query) {
   showLoading(true, "Loading camera feeds & satellite imagery...");
@@ -42,10 +146,6 @@ function loadCameras(category, query) {
           connElem.textContent = "Online & Synced";
           connElem.className = "card-value status-online";
         }
-
-        if (query && currentCameras.length === 0) {
-          alert(`No public live camera is available for "${query}".`);
-        }
       }
     })
     .catch((err) => {
@@ -59,10 +159,400 @@ function loadCameras(category, query) {
     });
 }
 
+function renderCameraMarkers(cameras) {
+  markersGroup.clearLayers();
+
+  if (!cameras || cameras.length === 0) {
+    console.log("MARKERS CREATED: 0");
+    return;
+  }
+
+  const bounds = L.latLngBounds();
+
+  cameras.forEach((cam) => {
+    const customIcon = L.divIcon({
+      className: "custom-map-pin",
+      html: `<div style="background: rgba(13,28,50,0.92); border: 2px solid #5bb2ff; color: #fff; padding: 4px 8px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+        <span>${getCategoryEmoji(cam.category)}</span>
+        <span>${cam.city || "Camera"}</span>
+      </div>`,
+      iconSize: [110, 30],
+      iconAnchor: [55, 15],
+    });
+
+    const marker = L.marker([cam.lat, cam.lon], { icon: customIcon });
+    marker.bindPopup(`
+      <div style="font-family: Inter, sans-serif; color: #0d1c32; padding: 4px;">
+        <h4 style="margin: 0 0 4px; font-size: 0.95rem;">${cam.name}</h4>
+        <p style="margin: 0 0 8px; font-size: 0.82rem; color: #475569;">${cam.city}, ${cam.country} &bull; ${cam.category}</p>
+        <button onclick="openCameraModalById('${cam.id}')" style="background: #0284c7; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 700; cursor: pointer; width: 100%;">
+          ▶ View Live Feed
+        </button>
+      </div>
+    `);
+
+    bounds.extend([cam.lat, cam.lon]);
+    markersGroup.addLayer(marker);
+  });
+
+  const createdCount = markersGroup.getLayers ? markersGroup.getLayers().length : cameras.length;
+  console.log("MARKERS CREATED:", createdCount);
+
+  if (cameras.length === 1) {
+    map.setView([cameras[0].lat, cameras[0].lon], 11);
+  } else if (cameras.length > 1 && activeCategory !== "all") {
+    map.fitBounds(bounds, { padding: [50, 50] });
+  }
+}
+
+function loadLiveEvents() {
+  showLoading(true, "Fetching active NASA EONET natural events...");
+  fetch("/api/live-earth/events")
+    .then((res) => res.json())
+    .then((data) => {
+      showLoading(false);
+      const events = data.events || [];
+      eventsGroup.clearLayers();
+
+      events.forEach((ev) => {
+        const emoji = getEventEmoji(ev.category);
+        const eventIcon = L.divIcon({
+          className: "custom-map-pin",
+          html: `<div style="background: rgba(220,38,38,0.92); border: 2px solid #fca5a5; color: #fff; padding: 4px 8px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 4px; box-shadow: 0 4px 14px rgba(239,68,68,0.6);">
+            <span>${emoji}</span>
+            <span>${ev.category}</span>
+          </div>`,
+          iconSize: [120, 30],
+          iconAnchor: [60, 15],
+        });
+
+        const marker = L.marker([ev.lat, ev.lon], { icon: eventIcon });
+        marker.bindPopup(`
+          <div style="font-family: Inter, sans-serif; color: #0d1c32; padding: 4px;">
+            <span style="font-size:0.75rem; font-weight:800; color:#dc2626; text-transform:uppercase;">🔥 NASA EONET LIVE EVENT</span>
+            <h4 style="margin: 4px 0; font-size: 0.95rem;">${ev.title}</h4>
+            <p style="margin: 0 0 6px; font-size: 0.82rem; color: #475569;">Category: ${ev.category} &bull; Date: ${ev.date}</p>
+            ${ev.link ? `<a href="${ev.link}" target="_blank" style="display:inline-block; font-size:0.8rem; color:#0284c7; font-weight:700;">🔗 View Official Event Data &rarr;</a>` : ""}
+          </div>
+        `);
+        eventsGroup.addLayer(marker);
+      });
+
+      updateStatusSource(`NASA EONET (${events.length} Live Natural Events)`);
+    })
+    .catch((err) => {
+      showLoading(false);
+      console.error("Error loading natural events:", err);
+    });
+}
+
+function getEventEmoji(cat) {
+  const c = String(cat).toLowerCase();
+  if (c.includes("wildfire") || c.includes("fire")) return "🔥";
+  if (c.includes("storm") || c.includes("cyclone") || c.includes("hurricane")) return "🌀";
+  if (c.includes("volcano")) return "🌋";
+  if (c.includes("earthquake")) return "🫨";
+  if (c.includes("flood")) return "⛈️";
+  return "⚠️";
+}
+
+function getCategoryEmoji(cat) {
+  if (!cat || typeof cat !== "string") return "🌍";
+  if (cat.includes("Traffic")) return "🚦";
+  if (cat.includes("Airport")) return "✈";
+  if (cat.includes("Harbor")) return "🚢";
+  if (cat.includes("Webcam") || cat.includes("Public Webcams")) return "🏖";
+  return "🌍";
+}
+
+// Map Click Interactive Weather Card
+function fetchWeatherForCoordinates(lat, lon, isUserLoc = false) {
+  const modal = document.getElementById("mapWeatherModal");
+  const body = document.getElementById("mwmBody");
+  const cityElem = document.getElementById("mwmCity");
+  const countryElem = document.getElementById("mwmCountry");
+
+  if (cityElem) cityElem.textContent = "Fetching weather...";
+  if (countryElem) countryElem.textContent = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+  if (body) {
+    body.innerHTML = `<div style="text-align:center; padding: 20px;"><div class="spinner"></div><p>Retrieving atmospheric data...</p></div>`;
+  }
+  if (modal) modal.classList.add("active");
+
+  fetch(`/api/live-earth/weather?lat=${lat}&lon=${lon}`)
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.status === "success" && data.weather) {
+        const w = data.weather;
+        if (cityElem) cityElem.textContent = `${w.city} ${w.country_flag || ""}`;
+        if (countryElem) countryElem.textContent = isUserLoc ? "📍 Your Detected Location" : `${w.country || "Global Coordinates"}`;
+
+        if (body) {
+          body.innerHTML = `
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+              <div>
+                <span style="font-size:2.2rem; font-weight:800; color:#fff;">${w.temperature}</span>
+                <p style="margin:2px 0 0; color:var(--muted); font-size:0.85rem;">Feels like ${w.feels_like} &bull; ${w.weather}</p>
+              </div>
+              <div style="font-size:3rem;">${w.temperature_emoji || "☀️"}</div>
+            </div>
+
+            <div class="wm-grid">
+              <div class="wm-card">
+                <span class="wm-card-label">Humidity</span>
+                <span class="wm-card-val">${w.humidity}</span>
+              </div>
+              <div class="wm-card">
+                <span class="wm-card-label">Wind</span>
+                <span class="wm-card-val">${w.wind_speed}</span>
+              </div>
+              <div class="wm-card">
+                <span class="wm-card-label">Barometer</span>
+                <span class="wm-card-val">${w.pressure}</span>
+              </div>
+              <div class="wm-card">
+                <span class="wm-card-label">Visibility</span>
+                <span class="wm-card-val">${w.visibility}</span>
+              </div>
+              <div class="wm-card">
+                <span class="wm-card-label">Air Quality</span>
+                <span class="wm-card-val">${w.air_quality}</span>
+              </div>
+              <div class="wm-card">
+                <span class="wm-card-label">Sun Cycle</span>
+                <span class="wm-card-val">${w.sunrise} / ${w.sunset}</span>
+              </div>
+            </div>
+
+            <div style="background:rgba(91,178,255,0.1); border:1px solid rgba(91,178,255,0.3); padding:10px; border-radius:10px; margin-top:10px; font-size:0.85rem;">
+              <strong>👕 Outfit Recommendation:</strong> ${w.wear_advice}
+            </div>
+          `;
+        }
+      }
+    })
+    .catch((err) => {
+      console.error("Error fetching weather card:", err);
+      if (body) body.innerHTML = `<p style="color:#ef4444; text-align:center;">Unable to load weather data for these coordinates.</p>`;
+    });
+}
+
+function closeMapWeatherModal() {
+  const modal = document.getElementById("mapWeatherModal");
+  if (modal) modal.classList.remove("active");
+}
+
+// Zoom Earth Style Radar Timeline Scrubber Player
+function initRadarTimeline() {
+  fetch("/api/live-earth/radar-timeline")
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.status === "success" && data.timeline && data.timeline.length > 0) {
+        timelineFrames = data.timeline;
+        timelineIndex = timelineFrames.length - 1;
+
+        const range = document.getElementById("timelineRange");
+        if (range) {
+          range.max = timelineFrames.length - 1;
+          range.value = timelineIndex;
+          range.addEventListener("input", (e) => {
+            timelineIndex = parseInt(e.target.value, 10);
+            updateTimelineFrame();
+          });
+        }
+
+        const btnPlay = document.getElementById("btnTimelinePlay");
+        const btnPrev = document.getElementById("btnTimelinePrev");
+        const btnNext = document.getElementById("btnTimelineNext");
+
+        if (btnPlay) {
+          btnPlay.addEventListener("click", () => {
+            isTimelinePlaying = !isTimelinePlaying;
+            btnPlay.textContent = isTimelinePlaying ? "⏸" : "▶";
+            if (isTimelinePlaying) {
+              timelineTimer = setInterval(() => {
+                timelineIndex = (timelineIndex + 1) % timelineFrames.length;
+                if (range) range.value = timelineIndex;
+                updateTimelineFrame();
+              }, 900);
+            } else {
+              clearInterval(timelineTimer);
+              timelineTimer = null;
+            }
+          });
+        }
+
+        if (btnPrev) {
+          btnPrev.addEventListener("click", () => {
+            timelineIndex = (timelineIndex - 1 + timelineFrames.length) % timelineFrames.length;
+            if (range) range.value = timelineIndex;
+            updateTimelineFrame();
+          });
+        }
+
+        if (btnNext) {
+          btnNext.addEventListener("click", () => {
+            timelineIndex = (timelineIndex + 1) % timelineFrames.length;
+            if (range) range.value = timelineIndex;
+            updateTimelineFrame();
+          });
+        }
+
+        updateTimelineFrame();
+      }
+    })
+    .catch((err) => console.error("Radar timeline error:", err));
+}
+
+function updateTimelineFrame() {
+  if (!timelineFrames || timelineFrames.length === 0) return;
+  const frame = timelineFrames[timelineIndex];
+  if (!frame) return;
+
+  const textElem = document.getElementById("timelineTimeText");
+  if (textElem) textElem.textContent = `Radar: ${frame.formatted_time}`;
+
+  if (timelineOverlayLayer) map.removeLayer(timelineOverlayLayer);
+
+  timelineOverlayLayer = L.tileLayer(frame.tile_url, {
+    opacity: 0.75,
+    attribution: "Radar &copy; RainViewer",
+  }).addTo(map);
+}
+
+// AI Assistant Drawer Functions
+function toggleAiDrawer() {
+  const drawer = document.getElementById("aiDrawer");
+  if (drawer) drawer.classList.toggle("active");
+}
+
+function sendAiQuickPrompt(promptText) {
+  const input = document.getElementById("aiInput");
+  if (input) input.value = promptText;
+  sendAiMessage();
+}
+
+function sendAiMessage() {
+  const input = document.getElementById("aiInput");
+  const messages = document.getElementById("aiMessages");
+  if (!input || !input.value.trim() || !messages) return;
+
+  const prompt = input.value.trim();
+  input.value = "";
+
+  const userMsg = document.createElement("div");
+  userMsg.className = "ai-msg user";
+  userMsg.textContent = prompt;
+  messages.appendChild(userMsg);
+  messages.scrollTop = messages.scrollHeight;
+
+  const botMsg = document.createElement("div");
+  botMsg.className = "ai-msg bot";
+  botMsg.textContent = "Analyzing Earth observation data...";
+  messages.appendChild(botMsg);
+  messages.scrollTop = messages.scrollHeight;
+
+  fetch("/api/live-earth/ai-assistant", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt: prompt }),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.status === "success") {
+        botMsg.textContent = data.response;
+      } else {
+        botMsg.textContent = "Unable to process AI response at this moment.";
+      }
+      messages.scrollTop = messages.scrollHeight;
+    })
+    .catch((err) => {
+      console.error("AI assistant error:", err);
+      botMsg.textContent = "Network error connecting to AI assistant.";
+    });
+}
+
+function bindUIEvents() {
+  // Category menu buttons
+  document.querySelectorAll(".cat-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      document.querySelectorAll(".cat-btn").forEach((b) => b.classList.remove("active"));
+      const target = e.currentTarget;
+      target.classList.add("active");
+
+      activeCategory = target.getAttribute("data-category");
+
+      if (activeCategory === "Favorites") {
+        renderFavoritesOnMap();
+      } else if (activeCategory === "Live Events") {
+        loadLiveEvents();
+      } else {
+        eventsGroup.clearLayers();
+        loadCameras(activeCategory, "");
+      }
+    });
+  });
+
+  // Search input button
+  const searchBtn = document.getElementById("leSearchBtn");
+  const searchInput = document.getElementById("leSearchInput");
+
+  if (searchBtn && searchInput) {
+    searchBtn.addEventListener("click", () => handleSearch(searchInput.value));
+    searchInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") handleSearch(searchInput.value);
+    });
+  }
+
+  // Toolbar action buttons
+  document.getElementById("btnZoomIn")?.addEventListener("click", () => map.zoomIn());
+  document.getElementById("btnZoomOut")?.addEventListener("click", () => map.zoomOut());
+  document.getElementById("btnLocateMe")?.addEventListener("click", requestBrowserLocation);
+  document.getElementById("btnResetView")?.addEventListener("click", () => map.setView([20.0, 0.0], 3));
+  document.getElementById("btnRefresh")?.addEventListener("click", () => {
+    loadCameras(activeCategory, "");
+    updateStatusPanel();
+  });
+  document.getElementById("btnToggleFullscreen")?.addEventListener("click", toggleFullscreen);
+
+  // Satellite Base map toggle
+  const satToggle = document.getElementById("satelliteBasemapToggle");
+  if (satToggle) {
+    satToggle.addEventListener("change", (e) => {
+      if (currentBaseLayer) map.removeLayer(currentBaseLayer);
+
+      if (e.target.checked) {
+        currentBaseLayer = L.tileLayer(ESRI_SATELLITE_URL, {
+          maxZoom: 18,
+          attribution: "Tiles &copy; Esri &mdash; Earthstar Geographics",
+        }).addTo(map);
+        updateStatusSource("Esri World Imagery Satellite");
+      } else {
+        currentBaseLayer = L.tileLayer(CARTO_DARK_URL, {
+          maxZoom: 19,
+          subdomains: "abcd",
+          attribution: '&copy; OpenStreetMap &copy; CARTO',
+        }).addTo(map);
+        updateStatusSource("CartoDB Dark Matter Base");
+      }
+    });
+  }
+
+  // Weather overlay radios
+  document.querySelectorAll('input[name="weatherOverlay"]').forEach((radio) => {
+    radio.addEventListener("change", (e) => handleWeatherOverlayChange(e.target.value));
+  });
+
+  // Earth overlay radios
+  document.querySelectorAll('input[name="earthOverlay"]').forEach((radio) => {
+    radio.addEventListener("change", (e) => handleEarthOverlayChange(e.target.value));
+  });
+}
+
 function handleSearch(query) {
   if (!query || !query.trim()) return;
 
-  showLoading(true);
+  showLoading(true, `Searching locations for "${query.trim()}"...`);
   fetch(`/api/live-earth/search?q=${encodeURIComponent(query.trim())}`)
     .then((res) => res.json())
     .then((data) => {
@@ -80,7 +570,6 @@ function handleSearch(query) {
         renderCameraMarkers(cameras);
         updateStatusCamCount(cameras.length);
 
-        // Auto-open nearest/first camera if user searched explicitly
         if (cameras[0]) {
           openCameraModalById(cameras[0].id);
         }
@@ -91,6 +580,70 @@ function handleSearch(query) {
     .catch((err) => {
       showLoading(false);
       console.error("Search error:", err);
+    });
+}
+
+function handleWeatherOverlayChange(layerId) {
+  if (currentOverlayLayer) map.removeLayer(currentOverlayLayer);
+
+  if (layerId === "none") {
+    updateStatusSource("Public Camera Network");
+    return;
+  }
+
+  showLoading(true, "Loading weather satellite overlay...");
+  fetch("/api/live-earth/satellites")
+    .then((res) => res.json())
+    .then((data) => {
+      showLoading(false);
+      console.log("SATELLITE DATA:", data);
+      const layers = data.layers || [];
+      const selected = layers.find((l) => l.id === layerId);
+      if (selected && selected.url_template) {
+        currentOverlayLayer = L.tileLayer(selected.url_template, {
+          opacity: selected.opacity || 0.7,
+          attribution: selected.attribution,
+        }).addTo(map);
+        console.log("SATELLITE LAYER ADDED");
+        updateStatusSource(selected.name);
+      } else {
+        alert("This layer requires an API key in your .env configuration.");
+      }
+    })
+    .catch((err) => {
+      showLoading(false);
+      console.error("Satellite overlay error:", err);
+    });
+}
+
+function handleEarthOverlayChange(layerId) {
+  if (currentOverlayLayer) map.removeLayer(currentOverlayLayer);
+
+  if (layerId === "none") {
+    updateStatusSource("Public Camera Network");
+    return;
+  }
+
+  showLoading(true, "Loading satellite imagery...");
+  fetch("/api/live-earth/earth-imagery")
+    .then((res) => res.json())
+    .then((data) => {
+      showLoading(false);
+      console.log("SATELLITE DATA:", data);
+      const layers = data.layers || [];
+      const selected = layers.find((l) => l.id === layerId);
+      if (selected && selected.url_template) {
+        currentOverlayLayer = L.tileLayer(selected.url_template, {
+          opacity: selected.opacity || 0.85,
+          attribution: selected.attribution,
+        }).addTo(map);
+        console.log("SATELLITE LAYER ADDED");
+        updateStatusSource(selected.name);
+      }
+    })
+    .catch((err) => {
+      showLoading(false);
+      console.error("Earth imagery overlay error:", err);
     });
 }
 
@@ -147,222 +700,13 @@ function closeCameraModal() {
   modal?.classList.remove("active");
 }
 
-function initMap() {
-  console.log("MAP INITIALIZATION STARTED");
-  
-  // Center on world view
-  map = L.map("leafletMap", {
-    center: [20.0, 0.0],
-    zoom: 3,
-    zoomControl: false,
-  });
-
-  currentBaseLayer = L.tileLayer(CARTO_DARK_URL, {
-    maxZoom: 19,
-    subdomains: "abcd",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CARTO',
-  });
-
-  currentBaseLayer.on("tileerror", function (err) {
-    console.warn("CartoDB tile loading error, applying OpenStreetMap fallback:", err);
-    if (map && currentBaseLayer) {
-      map.removeLayer(currentBaseLayer);
-      currentBaseLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      }).addTo(map);
-    }
-  });
-
-  currentBaseLayer.addTo(map);
-  console.log("MAP OBJECT:", map);
-
-  if (typeof L.markerClusterGroup === "function") {
-    markersGroup = L.markerClusterGroup({
-      spiderfyOnMaxZoom: true,
-      showCoverageOnHover: false,
-      zoomToBoundsOnClick: true,
-      maxClusterRadius: 45,
-    });
-    map.addLayer(markersGroup);
-  } else {
-    markersGroup = L.featureGroup().addTo(map);
-  }
-
-  [50, 250, 600, 1200].forEach((delay) => {
-    setTimeout(() => {
-      if (map) map.invalidateSize();
-    }, delay);
-  });
-
-  window.addEventListener("resize", () => {
-    if (map) map.invalidateSize();
-  });
-}
-
-function bindUIEvents() {
-  // Base map toggle
-  const satToggle = document.getElementById("satelliteBasemapToggle");
-  if (satToggle) {
-    satToggle.addEventListener("change", (e) => {
-      if (currentBaseLayer) map.removeLayer(currentBaseLayer);
-
-      if (e.target.checked) {
-        currentBaseLayer = L.tileLayer(ESRI_SATELLITE_URL, {
-          maxZoom: 18,
-          attribution: "Tiles &copy; Esri &mdash; Earthstar Geographics",
-        }).addTo(map);
-        updateStatusSource("Esri World Imagery Satellite");
-      } else {
-        currentBaseLayer = L.tileLayer(CARTO_DARK_URL, {
-          maxZoom: 19,
-          subdomains: "abcd",
-          attribution: '&copy; OpenStreetMap &copy; CARTO',
-        }).addTo(map);
-        updateStatusSource("CartoDB Dark Matter Base");
-      }
-    });
-  }
-
-  // Category sidebar buttons
-  document.querySelectorAll(".cat-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".cat-btn").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      activeCategory = btn.dataset.category;
-
-      if (activeCategory === "Favorites") {
-        renderFavoritesOnMap();
-      } else if (activeCategory === "Weather Satellite") {
-        toggleLayerPanel(true);
-        const precipRadio = document.querySelector('input[name="weatherOverlay"][value="precipitation"]');
-        if (precipRadio) {
-          precipRadio.checked = true;
-          handleWeatherOverlayChange("precipitation");
-        }
-        loadCameras("all", "");
-      } else if (activeCategory === "Earth Imagery") {
-        toggleLayerPanel(true);
-        const nasaRadio = document.querySelector('input[name="earthOverlay"][value="nasa-modis-terra"]');
-        if (nasaRadio) {
-          nasaRadio.checked = true;
-          handleEarthOverlayChange("nasa-modis-terra");
-        }
-        loadCameras("all", "");
-      } else {
-        loadCameras(activeCategory, "");
-      }
-    });
-  });
-
-  // Search input & button
-  const searchBtn = document.getElementById("leSearchBtn");
-  const searchInput = document.getElementById("leSearchInput");
-
-  if (searchBtn && searchInput) {
-    searchBtn.addEventListener("click", () => handleSearch(searchInput.value));
-    searchInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") handleSearch(searchInput.value);
-    });
-  }
-
-  // Floating toolbar buttons
-  document.getElementById("btnZoomIn")?.addEventListener("click", () => map.zoomIn());
-  document.getElementById("btnZoomOut")?.addEventListener("click", () => map.zoomOut());
-  document.getElementById("btnResetView")?.addEventListener("click", () => map.setView([20.0, 0.0], 3));
-  document.getElementById("btnLocateMe")?.addEventListener("click", locateUser);
-  document.getElementById("btnRefresh")?.addEventListener("click", () => {
-    showLoading(true);
-    loadCameras(activeCategory, searchInput ? searchInput.value : "");
-    setTimeout(() => showLoading(false), 600);
-  });
-  document.getElementById("btnToggleFullscreen")?.addEventListener("click", toggleFullscreen);
-
-  // Weather overlay radios
-  document.querySelectorAll('input[name="weatherOverlay"]').forEach((radio) => {
-    radio.addEventListener("change", (e) => handleWeatherOverlayChange(e.target.value));
-  });
-
-  // Earth overlay radios
-  document.querySelectorAll('input[name="earthOverlay"]').forEach((radio) => {
-    radio.addEventListener("change", (e) => handleEarthOverlayChange(e.target.value));
-  });
-
-  // Favorite button inside camera modal
-  document.getElementById("camFavBtn")?.addEventListener("click", () => {
-    if (activeCamera) {
-      const isFav = toggleFavorite(activeCamera);
-      const favBtn = document.getElementById("camFavBtn");
-      if (favBtn) favBtn.classList.toggle("active", isFav);
-      if (activeCategory === "Favorites") renderFavoritesOnMap();
-    }
-  });
-}
-
-function showLoading(show, message) {
+function showLoading(show, message = "Synchronizing Live Earth Data...") {
   const overlay = document.getElementById("mapLoading");
+  const textElem = document.getElementById("mapLoadingText");
   if (overlay) {
     overlay.classList.toggle("active", show);
-    if (message) {
-      const span = overlay.querySelector("span");
-      if (span) span.textContent = message;
-    }
+    if (textElem && message) textElem.textContent = message;
   }
-}
-
-function renderCameraMarkers(cameras) {
-  markersGroup.clearLayers();
-
-  if (!cameras || cameras.length === 0) {
-    console.log("MARKERS CREATED: 0");
-    return;
-  }
-
-  const bounds = L.latLngBounds();
-
-  cameras.forEach((cam) => {
-    const customIcon = L.divIcon({
-      className: "custom-map-pin",
-      html: `<div style="background: rgba(13,28,50,0.92); border: 2px solid #5bb2ff; color: #fff; padding: 4px 8px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
-        <span>${getCategoryEmoji(cam.category)}</span>
-        <span>${cam.city || "Camera"}</span>
-      </div>`,
-      iconSize: [110, 30],
-      iconAnchor: [55, 15],
-    });
-
-    const marker = L.marker([cam.lat, cam.lon], { icon: customIcon });
-    marker.bindPopup(`
-      <div style="font-family: Inter, sans-serif; color: #0d1c32; padding: 4px;">
-        <h4 style="margin: 0 0 4px; font-size: 0.95rem;">${cam.name}</h4>
-        <p style="margin: 0 0 8px; font-size: 0.82rem; color: #475569;">${cam.city}, ${cam.country} &bull; ${cam.category}</p>
-        <button onclick="openCameraModalById('${cam.id}')" style="background: #0284c7; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 700; cursor: pointer; width: 100%;">
-          ▶ View Live Feed
-        </button>
-      </div>
-    `);
-
-    bounds.extend([cam.lat, cam.lon]);
-    markersGroup.addLayer(marker);
-  });
-
-  const createdCount = markersGroup.getLayers ? markersGroup.getLayers().length : cameras.length;
-  console.log("MARKERS CREATED:", createdCount);
-
-  if (cameras.length === 1) {
-    map.setView([cameras[0].lat, cameras[0].lon], 11);
-  } else if (cameras.length > 1) {
-    map.fitBounds(bounds, { padding: [50, 50] });
-  }
-}
-
-function getCategoryEmoji(cat) {
-  if (!cat || typeof cat !== "string") return "🌍";
-  if (cat.includes("Traffic")) return "🚦";
-  if (cat.includes("Airport")) return "✈";
-  if (cat.includes("Harbor")) return "🚢";
-  if (cat.includes("Webcam") || cat.includes("Public Webcams")) return "🏖";
-  return "🌍";
 }
 
 function renderFavoritesOnMap() {
@@ -448,28 +792,6 @@ function refreshCamFeed() {
   }
 }
 
-function locateUser() {
-  if (!navigator.geolocation) {
-    alert("Geolocation is not supported by your browser.");
-    return;
-  }
-  showLoading(true, "Detecting your current location...");
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      showLoading(false);
-      map.setView([pos.coords.latitude, pos.coords.longitude], 12);
-      L.marker([pos.coords.latitude, pos.coords.longitude])
-        .addTo(map)
-        .bindPopup("📍 Your Current Location")
-        .openPopup();
-    },
-    () => {
-      showLoading(false);
-      alert("Unable to retrieve your current position.");
-    }
-  );
-}
-
 function toggleFullscreen() {
   const mapElem = document.getElementById("mapWrapper");
   if (!document.fullscreenElement) {
@@ -490,70 +812,6 @@ function toggleLayerPanel(forceOpen) {
   }
 }
 
-function handleWeatherOverlayChange(layerId) {
-  if (currentOverlayLayer) map.removeLayer(currentOverlayLayer);
-
-  if (layerId === "none") {
-    updateStatusSource("Public Camera Network");
-    return;
-  }
-
-  showLoading(true, "Loading weather satellite overlay...");
-  fetch("/api/live-earth/satellites")
-    .then((res) => res.json())
-    .then((data) => {
-      showLoading(false);
-      console.log("SATELLITE DATA:", data);
-      const layers = data.layers || [];
-      const selected = layers.find((l) => l.id === layerId);
-      if (selected && selected.url_template) {
-        currentOverlayLayer = L.tileLayer(selected.url_template, {
-          opacity: selected.opacity || 0.7,
-          attribution: selected.attribution,
-        }).addTo(map);
-        console.log("SATELLITE LAYER ADDED");
-        updateStatusSource(selected.name);
-      } else {
-        alert("This layer requires an API key in your .env configuration.");
-      }
-    })
-    .catch((err) => {
-      showLoading(false);
-      console.error("Satellite overlay error:", err);
-    });
-}
-
-function handleEarthOverlayChange(layerId) {
-  if (currentOverlayLayer) map.removeLayer(currentOverlayLayer);
-
-  if (layerId === "none") {
-    updateStatusSource("Public Camera Network");
-    return;
-  }
-
-  showLoading(true, "Loading NASA Earth imagery...");
-  fetch("/api/live-earth/earth-imagery")
-    .then((res) => res.json())
-    .then((data) => {
-      showLoading(false);
-      console.log("SATELLITE DATA:", data);
-      const layers = data.layers || [];
-      const selected = layers.find((l) => l.id === layerId);
-      if (selected && selected.url_template) {
-        currentOverlayLayer = L.tileLayer(selected.url_template, {
-          opacity: selected.opacity || 0.85,
-          attribution: selected.attribution,
-        }).addTo(map);
-        console.log("SATELLITE LAYER ADDED");
-        updateStatusSource(selected.name);
-      }
-    })
-    .catch((err) => {
-      showLoading(false);
-      console.error("Earth imagery overlay error:", err);
-    });
-}
-
 function updateStatusPanel() {
   fetch("/api/live-earth/status")
     .then((res) => res.json())
@@ -570,15 +828,5 @@ function updateStatusSource(sourceName) {
 
 function updateStatusCamCount(count) {
   const elem = document.getElementById("statusCamCount");
-  if (elem) elem.textContent = `${count} Camera${count === 1 ? "" : "s"} Found`;
-}
-
-function retryActiveSearch() {
-  closeCameraModal();
-  const searchInput = document.getElementById("leSearchInput");
-  if (searchInput && searchInput.value) {
-    handleSearch(searchInput.value);
-  } else {
-    loadCameras(activeCategory, "");
-  }
+  if (elem) elem.textContent = `${count} Cameras Found`;
 }
