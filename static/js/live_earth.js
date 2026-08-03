@@ -24,7 +24,10 @@ function loadCameras(category, query) {
   const url = `/api/live-earth/cameras?category=${encodeURIComponent(category)}&q=${encodeURIComponent(query)}`;
 
   fetch(url)
-    .then((res) => res.json())
+    .then((res) => {
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      return res.json();
+    })
     .then((data) => {
       showLoading(false);
       if (data.status === "success") {
@@ -32,6 +35,12 @@ function loadCameras(category, query) {
         if (!query) allCamerasList = currentCameras;
         renderCameraMarkers(currentCameras);
         updateStatusCamCount(currentCameras.length);
+
+        const connElem = document.getElementById("statusConn");
+        if (connElem) {
+          connElem.textContent = "Online & Synced";
+          connElem.className = "card-value status-online";
+        }
 
         if (query && currentCameras.length === 0) {
           alert(`No public live camera is available for "${query}".`);
@@ -41,6 +50,11 @@ function loadCameras(category, query) {
     .catch((err) => {
       showLoading(false);
       console.error("Error loading cameras:", err);
+      const connElem = document.getElementById("statusConn");
+      if (connElem) {
+        connElem.textContent = "Offline / API Error";
+        connElem.className = "card-value status-offline";
+      }
     });
 }
 
@@ -348,9 +362,6 @@ function executeQuickSearch(city) {
   if (searchInput) searchInput.value = city;
   handleSearch(city);
 }
-
-let activeCamMode = "video";
-let autoRefreshTimer = null;
 
 function switchCamMode(mode) {
   if (!activeCamera) return;
