@@ -267,29 +267,7 @@ function showLoading(show) {
   if (overlay) overlay.classList.toggle("active", show);
 }
 
-function loadCameras(category, query) {
-  showLoading(true);
-  const url = `/api/live-earth/cameras?category=${encodeURIComponent(category)}&q=${encodeURIComponent(query)}`;
 
-  fetch(url)
-    .then((res) => res.json())
-    .then((data) => {
-      showLoading(false);
-      if (data.status === "success") {
-        currentCameras = data.cameras || [];
-        renderCameraMarkers(currentCameras);
-        updateStatusCamCount(currentCameras.length);
-
-        if (query && currentCameras.length === 0) {
-          alert(`No public live camera is available for "${query}".`);
-        }
-      }
-    })
-    .catch((err) => {
-      showLoading(false);
-      console.error("Error loading cameras:", err);
-    });
-}
 
 function renderCameraMarkers(cameras) {
   markersGroup.clearLayers();
@@ -349,35 +327,7 @@ function renderFavoritesOnMap() {
   }
 }
 
-function handleSearch(query) {
-  if (!query || !query.strip?.() && !query.trim()) return;
 
-  showLoading(true);
-  fetch(`/api/live-earth/search?q=${encodeURIComponent(query.trim())}`)
-    .then((res) => res.json())
-    .then((data) => {
-      showLoading(false);
-      const locations = data.locations || [];
-      const cameras = data.cameras || [];
-
-      if (locations.length > 0) {
-        const loc = locations[0];
-        map.setView([loc.lat, loc.lon], 11);
-      }
-
-      if (cameras.length > 0) {
-        currentCameras = cameras;
-        renderCameraMarkers(cameras);
-        updateStatusCamCount(cameras.length);
-      } else {
-        renderNoCameraMessage(query);
-      }
-    })
-    .catch((err) => {
-      showLoading(false);
-      console.error("Search error:", err);
-    });
-}
 
 function renderNoCameraMessage(query) {
   const noMsg = document.getElementById("noCamMsg");
