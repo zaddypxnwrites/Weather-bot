@@ -42,11 +42,33 @@ def filter_cameras(category: str = None, query: str = None, lat: float = None, l
         if spatial_cameras:
             return sorted(spatial_cameras, key=lambda c: calculate_distance(lat, lon, c["lat"], c["lon"]))
 
-    if category and category.lower() not in ["all", "favorites", "⭐ favorites"]:
-        norm_cat = category.strip().lower().replace("🌍 ", "").replace("🚦 ", "").replace("✈ ", "").replace("🚢 ", "").replace("🏖 ", "")
+    if category and category.lower() not in ["all", "favorites", "⭐ favorites", "all feeds & layers"]:
+        raw = category.strip().lower()
+        for prefix in ["🌍 ", "🚦 ", "✈ ", "🚢 ", "🏖 ", "🛰 ", "🌎 ", "🔥 ", "⭐ ", "🌐 "]:
+            raw = raw.replace(prefix, "")
+        
+        # Keyword extraction
+        if "traffic" in raw:
+            norm_cat = "traffic"
+        elif "airport" in raw:
+            norm_cat = "airport"
+        elif "harbor" in raw:
+            norm_cat = "harbor"
+        elif "webcam" in raw:
+            norm_cat = "webcam"
+        elif "public" in raw:
+            norm_cat = "public"
+        elif "weather" in raw or "satellite" in raw or "imagery" in raw or "event" in raw:
+            # Special layer modes: return all cameras so pins remain visible while layer activates
+            return cameras
+        else:
+            norm_cat = raw
+
         cameras = [
             cam for cam in cameras
-            if norm_cat in cam["category"].lower() or norm_cat in cam["name"].lower()
+            if norm_cat in cam["category"].lower()
+            or norm_cat in cam["name"].lower()
+            or norm_cat in cam["city"].lower()
         ]
         
     if query and query.strip():

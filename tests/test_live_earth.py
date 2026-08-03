@@ -77,3 +77,24 @@ def test_api_status():
     data = response.get_json()
     assert data["connection_status"] == "Online"
     assert len(data["providers"]) > 0
+
+
+def test_api_satellites_keyless_fallbacks():
+    client = app.test_client()
+    response = client.get("/api/live-earth/satellites")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "success"
+    for layer in data["layers"]:
+        assert layer.get("url_template") is not None
+        assert len(layer["url_template"]) > 0
+
+
+def test_api_cameras_weather_satellite_category():
+    client = app.test_client()
+    response = client.get("/api/live-earth/cameras?category=Weather+Satellite")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["status"] == "success"
+    assert len(data["cameras"]) > 0
+

@@ -55,6 +55,7 @@ function initMap() {
     zoomAnimation: true,
   });
 
+  let isFallbackApplied = false;
   currentBaseLayer = L.tileLayer(CARTO_DARK_URL, {
     maxZoom: 19,
     subdomains: "abcd",
@@ -63,7 +64,8 @@ function initMap() {
 
   currentBaseLayer.on("tileerror", function (err) {
     console.warn("CartoDB tile loading error, applying OpenStreetMap fallback:", err);
-    if (map && currentBaseLayer) {
+    if (map && !isFallbackApplied) {
+      isFallbackApplied = true;
       map.removeLayer(currentBaseLayer);
       currentBaseLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
@@ -490,7 +492,11 @@ function initRadarTimeline() {
           });
         }
 
-        updateTimelineFrame();
+        const lastFrame = timelineFrames[timelineIndex];
+        const textElem = document.getElementById("timelineTimeText");
+        if (textElem && lastFrame) {
+          textElem.textContent = `Radar: ${lastFrame.formatted_time}`;
+        }
       }
     })
     .catch((err) => console.error("Radar timeline error:", err));
@@ -507,7 +513,7 @@ function updateTimelineFrame() {
   if (timelineOverlayLayer) map.removeLayer(timelineOverlayLayer);
 
   timelineOverlayLayer = L.tileLayer(frame.tile_url, {
-    opacity: 0.75,
+    opacity: currentLayerOpacity || 0.75,
     attribution: "Radar &copy; RainViewer",
   }).addTo(map);
 }
@@ -582,6 +588,14 @@ function bindUIEvents() {
         renderFavoritesOnMap();
       } else if (activeCategory === "Live Events") {
         loadLiveEvents();
+      } else if (activeCategory === "Weather Satellite") {
+        toggleLayerPanel(true);
+        handleWeatherOverlayChange("precipitation");
+        loadCameras("all", "");
+      } else if (activeCategory === "Earth Imagery") {
+        toggleLayerPanel(true);
+        handleEarthOverlayChange("nasa-modis-terra");
+        loadCameras("all", "");
       } else {
         eventsGroup.clearLayers();
         loadCameras(activeCategory, "");
@@ -1021,46 +1035,3 @@ function updateStatusCamCount(count) {
   if (elem) elem.textContent = `${count} Cameras`;
 }
 
-function requestBrowserLocation() {
-  if (!navigator.geolocation) {
-    alert("Geolocation is not supported by your browser.");
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const lat = position.coords.latitude;
-      const lon = position.coords.longitude;
-
-      if (userMarker) {
-        map.removeLayer(userMarker);
-      }
-
-      const pulseIcon = L.divIcon({
-        className: "user-location-marker",
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-      });
-
-      userMarker = L.marker([lat, lon], { icon: pulseIcon }).addTo(map);
-      userMarker.bindPopup("<b>📍 Your Current Location</b>").openPopup();
-
-      map.flyTo([lat, lon], 12, { animate: true, duration: 1.5 });
-
-      fetch(`/api/live-earth/cameras?lat=${lat}&lon=${lon}&radius=100`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.status === "success" && data.cameras) {
-            currentCameras = data.cameras;
-            renderCameraMarkers(currentCameras);
-            updateStatusCamCount(data.cameras.length);
-          }
-        })
-        .catch((err) => console.warn("Failed to load nearby webcams:", err));
-    },
-    (error) => {
-      console.warn("Geolocation permission error:", error.message);
-    },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-  );
-}
